@@ -51,7 +51,7 @@ Properties aus der Search Console, angereichert um `covered_from`/`covered_to` j
 ```ts
 { site_url: string }
 ```
-Setzt die aktive Property im Sitzungs-Durable-Object. Alle folgenden Aufrufe dürfen `property` weglassen. `destructiveHint: false`, aber nicht `readOnly` — es verändert Sitzungszustand.
+Setzt die aktive Property in der Sitzungs-Registry (gespiegelt nach `core.mcp_sessions`, überlebt Neustarts). Alle folgenden Aufrufe dürfen `property` weglassen. `destructiveHint: false`, aber nicht `readOnly` — es verändert Sitzungszustand.
 
 ---
 
@@ -155,7 +155,7 @@ Segmentiert und weist den anonymisierten Rest getrennt aus, statt ihn einer der 
 ```ts
 { property?, lookback_months?: number, min_clicks_before?: number, limit? }
 ```
-Seiten mit strukturellem, nicht saisonalem Klickverlust. Nutzt bewusst die Historie jenseits der 16 Monate und ist damit auf dem Passthrough-Modell des Wettbewerbers gar nicht abbildbar.
+Seiten mit strukturellem, nicht saisonalem Klickverlust. Setzt Historie jenseits der 16 Monate voraus und ist auf einem reinen Passthrough-Modell nicht abbildbar ([12-wettbewerb-usp.md](12-wettbewerb-usp.md)).
 
 ---
 
@@ -206,7 +206,7 @@ Bestätigte Google-Updates zur Korrelation mit Auffälligkeiten. Wird von `detec
 { property?, dataset: 'query'|'page'|'query_page'|'totals',
   period, format?: 'csv'|'parquet' }
 ```
-Erzeugt eine Datei in R2 und liefert eine präsignierte URL mit kurzer Gültigkeit. Ab Pro. Der Weg über eine URL statt über die Tool-Antwort ist zwingend — ein CSV mit 100.000 Zeilen im Kontextfenster wäre unbrauchbar und teuer.
+Erzeugt eine Datei im Objektspeicher und liefert eine präsignierte URL mit kurzer Gültigkeit. Ab Pro. Der Weg über eine URL statt über die Tool-Antwort ist zwingend — ein CSV mit 100.000 Zeilen im Kontextfenster wäre unbrauchbar und teuer.
 
 ### `show_pricing`
 Planübersicht mit Upgrade-Link. Wird auch von der Limitbehandlung aufgerufen.
@@ -271,7 +271,7 @@ Limits sind kein Fehlerfall, sondern ein Gesprächsangebot. Bei Überschreitung 
 ```
 [Free-Plan] Es wurden 30 Tage ausgewertet. Ihr Plan begrenzt die Historie
 auf 30 Tage; mit Starter stehen 16 Monate zur Verfügung, mit Pro die
-vollständige Historie ab Sync-Beginn. → https://<domain>/pricing
+vollständige Historie ab Sync-Beginn. → https://www.gsc2mcp.com/pricing
 ```
 
 Dieses Muster nutzt auch der Wettbewerber, inklusive der ausdrücklichen Anweisung an den Agenten, den Hinweis nicht zu paraphrasieren. Es wirkt, weil es an genau der Stelle erscheint, an der der Nutzer den fehlenden Wert gerade konkret vermisst.

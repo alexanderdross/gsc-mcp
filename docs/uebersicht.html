@@ -287,20 +287,20 @@ footer {
 <div class="wrap">
 
 <header class="masthead">
-  <div class="eyebrow">Konzeption · August 2026 · alexanderdross/gsc-mcp</div>
+  <div class="eyebrow">Konzeption · August 2026 · gsc2mcp.com</div>
   <h1>GSC-MCP</h1>
-  <p class="thesis">Ein Remote-MCP-Server, der alle Search-Console-Daten in Claude bringt — und sie behält, <em>nachdem Google sie gelöscht hat</em>.</p>
+  <p class="thesis">Der einzige SEO-Agent, der auf <em>Googles vollständigem Datenexport</em> arbeitet statt auf der limitierten API.</p>
   <div class="figures">
-    <div class="fig"><b>16&nbsp;Mon.</b><span>Historie, die Google unwiederbringlich löscht</span></div>
     <div class="fig"><b>91,7&nbsp;%</b><span>der Klicks außerhalb der Top-100-Queries — gemessen an aip.aero</span></div>
+    <div class="fig"><b>20+</b><span>konkurrierende GSC-MCP-Projekte, die meisten kostenlos</span></div>
     <div class="fig"><b>26</b><span>MCP-Tools, davon 25 rein lesend</span></div>
-    <div class="fig"><b>~10&nbsp;Wo.</b><span>Arbeitszeit bis zum kommerziellen Start</span></div>
+    <div class="fig"><b>~11&nbsp;Wo.</b><span>Arbeitszeit bis zum kommerziellen Start</span></div>
   </div>
 </header>
 
 <section>
   <h2>Das Problem ist zugleich das Produkt</h2>
-  <p class="lede">Die Search Console API ist eng begrenzt. Werkzeuge, die sie nur durchreichen, erben diese Grenzen vollständig — das gilt auch für das Referenzprodukt Advanced&nbsp;GSC.</p>
+  <p class="lede">Die Search Console API ist eng begrenzt — und <strong>ausnahmslos jedes Werkzeug am Markt nutzt sie</strong>, auch die, die Daten anschließend speichern. Sie speichern damit eine Stichprobe.</p>
   <div class="scroll">
     <table>
       <thead><tr><th>Google-Limit</th><th>Beim Passthrough</th><th>Mit eigenem Warehouse</th></tr></thead>
@@ -346,32 +346,60 @@ footer {
 
 <section>
   <h2>Architektur</h2>
-  <p class="lede">Cloudflare Workers. Der MCP-Server antwortet in Millisekunden, der Sync läuft minutenlang und darf scheitern — deshalb sind es zwei getrennte Worker.</p>
+  <p class="lede">netcup Root Server in Nürnberg, Cloudflare als Schutzschild davor. Die ursprüngliche Planung sah Cloudflare Workers als Laufzeit vor — revidiert, weil der Engpass die Datenbank ist, nicht die Runtime.</p>
   <div class="arch">
     <div class="node">
-      <div class="n-title">Claude · Web, Desktop, Code</div>
+      <div class="n-title">Claude · ChatGPT · Cursor</div>
       <div class="n-body">Verbindet sich über die Server-URL. Keine API-Keys.</div>
     </div>
     <div class="link-label">Streamable HTTP · OAuth 2.1 mit PKCE und Dynamic Client Registration</div>
     <div class="link"></div>
+    <div class="node">
+      <div class="n-title">Cloudflare (kostenloser Tarif)</div>
+      <div class="n-body">TLS am Rand · DDoS · Ratenbegrenzung auf <code>/register</code> und <code>/token</code> · Origin-IP verborgen. <strong>Kein Caching auf <code>/mcp</code></strong> — und ein SSE-Keepalive alle 30&nbsp;s, sonst reißt die Sitzung am 900-Sekunden-Idle-Timeout ab.</div>
+    </div>
+    <div class="link"></div>
     <div class="node core">
-      <div class="n-title">mcp-server</div>
-      <div class="n-body">OAuth Authorization Server · McpAgent im Durable Object hält den Property-Kontext je Sitzung · Tool-Router mit Entitlement-Gate, Quota-Gate und Antwortbudget · MCP Apps als <code>ui://</code>-Ressourcen</div>
+      <div class="n-title">app — MCP-Server &amp; OAuth AS</div>
+      <div class="n-body">Node 22, Hono, <code>node-oidc-provider</code> · Sitzungs-Registry mit Property-Kontext · Tool-Router mit Entitlement-Gate, Quota-Gate und Antwortbudget · MCP Apps als <code>ui://</code>-Ressourcen</div>
+    </div>
+    <div class="link"></div>
+    <div class="node core">
+      <div class="n-title">PostgreSQL 17</div>
+      <div class="n-body">Control Plane und Warehouse mit Monatspartitionen · pg-boss als Job-Queue · Rate-Budget als Token-Bucket. <strong>Der gesamte Shard-Apparat der D1-Fassung entfällt ersatzlos</strong> — und <code>percentile_cont</code>, <code>regr_slope</code> und Fensterfunktionen machen die Analyse-Engine zu SQL.</div>
+    </div>
+    <div class="link"></div>
+    <div class="node">
+      <div class="n-title">worker — Sync</div>
+      <div class="n-body">systemd-Timer, COPY-Massenschreiben, adaptiver Rate-Limiter gegen die projektweit geteilte Google-Quote</div>
     </div>
     <div class="link"></div>
     <div class="row3">
-      <div class="node"><div class="n-title">D1</div><div class="n-body">Control Plane und Warehouse. Shard-Pfad je Property vorbereitet.</div></div>
-      <div class="node"><div class="n-title">R2</div><div class="n-body">Parquet-Kaltarchiv und Exporte. Die einzige Sicherung der Historie über 16 Monate.</div></div>
-      <div class="node"><div class="n-title">Queues · Cron</div><div class="n-body">Entkoppeln den Sync. Ein Backfill sind 1.500–3.500 API-Calls.</div></div>
+      <div class="node"><div class="n-title">Search Console API</div><div class="n-body">Einmaliger Backfill über 16 Monate. Danach nicht mehr der Hauptweg.</div></div>
+      <div class="node core"><div class="n-title">BigQuery Bulk Export</div><div class="n-body">Laufend, vollständig, <strong>ohne API-Quote</strong>. Der eigentliche Unterschied zum gesamten Wettbewerb.</div></div>
+      <div class="node"><div class="n-title">Offsite (EU)</div><div class="n-body">pgBackRest mit PITR, monatliche Parquet-Exporte. Die einzige Sicherung der Historie über 16 Monate.</div></div>
     </div>
-    <div class="link"></div>
-    <div class="node core">
-      <div class="n-title">sync-worker</div>
-      <div class="n-body">Backfill über 16 Monate, täglicher Delta-Sync der letzten fünf Tage, Stundendaten ab Pro · <strong>Rate-Limiter als Durable Object</strong> — die Google-Quote gilt pro Cloud-Projekt und damit geteilt über alle Kunden</div>
-    </div>
-    <div class="link"></div>
-    <div class="node"><div class="n-title">Google Search Console API</div><div class="n-body">Lesend im Namen des Nutzers. Der Refresh-Token bleibt verschlüsselt auf dem Server und verlässt ihn nie.</div></div>
   </div>
+  <p style="margin-top:18px;font-size:14px">Ein zweiter Hostname <code>eu.gsc2mcp.com</code> läuft ohne Cloudflare direkt auf den Server — für Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, und als Notweg bei einem Proxy-Ausfall.</p>
+</section>
+
+<section>
+  <h2>Der Wettbewerb, ehrlich</h2>
+  <p class="lede">Ein Scan im August 2026 hat zwei der ursprünglich fünf Differenzierer entwertet. Das gehört an den Anfang, nicht in eine Fußnote.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Ursprünglich behauptet</th><th>Befund</th></tr></thead>
+      <tbody>
+        <tr><th>Historie über 16 Monate</th><td class="was"><strong>gefallen</strong> — SEO&nbsp;Gets, SEO&nbsp;Stack, GSC&nbsp;Wizard, SEOTesting; vor allem Googles eigener Bulk Export</td></tr>
+        <tr><th>Volle Auflösung</th><td class="was"><strong>gefallen — aber gedreht.</strong> Über die API kein Vorteil; über den Bulk Export ein entscheidender</td></tr>
+        <tr><th>Deterministische Analyse</th><td class="is"><strong>hält</strong> — Nachfrage/Ranking/Snippet-Zerlegung und saisonbereinigte Anomalien fand sich bei niemandem</td></tr>
+        <tr><th>Proaktive Alerts</th><td class="is"><strong>hält</strong> — kein MCP-Anbieter meldet sich von selbst</td></tr>
+        <tr><th>EU-Hosting, AVV</th><td class="is"><strong>hält</strong> — alle relevanten Anbieter sind US oder UK</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:20px">Beim Nachrechnen fiel auf, was den Ausweg zeigt: <strong>Ausnahmslos jeder Anbieter nutzt die Search Console API als Quelle</strong> und erbt damit deren Zeilengrenzen. Wer die Daten anschließend speichert, speichert eine Stichprobe. Googles Bulk Data Export hat keine dieser Grenzen — ihm fehlt nur alles andere: Oberfläche, Analyse, Agentenzugang.</p>
+  <p><strong>Niemand verbindet Googles vollständigen Datenexport mit einem Agentenzugang und einer rechnenden Analyse.</strong> Das ist die Position — und sie räumt nebenbei den größten Engpass des bisherigen Entwurfs ab, weil der Bulk Export keine API-Quote verbraucht.</p>
 </section>
 
 <section>
@@ -400,7 +428,7 @@ footer {
     </div>
     <div class="group">
       <h4>Kontext &amp; Export<span>3</span></h4>
-      <p>Export läuft über eine präsignierte R2-URL, nicht durch das Kontextfenster.</p>
+      <p>Export läuft über eine präsignierte URL aus dem Objektspeicher, nicht durch das Kontextfenster.</p>
       <div class="chips"><span class="chip">get_google_updates</span><span class="chip new">export_data</span><span class="chip">show_pricing</span></div>
     </div>
     <div class="group">
@@ -436,32 +464,33 @@ footer {
 
 <section>
   <h2>Pläne</h2>
-  <p class="lede">Der Wettbewerber staffelt nach zugekauften Datenquellen und muss deshalb Kontingente verkaufen. Unsere Kosten liegen in Speicher und Sync — wir staffeln nach Datentiefe.</p>
+  <p class="lede">Zeilendeckel entfallen als Preismerkmal — auf PostgreSQL kostet Speicher fast nichts. Stattdessen trennt das eigentliche Unterscheidungsmerkmal die Pläne: ab Pro läuft der vollständige Bulk Export.</p>
   <div class="scroll">
     <table>
-      <thead><tr><th></th><th>Free</th><th>Starter&nbsp;€19</th><th>Pro&nbsp;€49</th><th>Agency&nbsp;€149</th></tr></thead>
+      <thead><tr><th></th><th>Free</th><th>Starter&nbsp;€15</th><th>Pro&nbsp;€45</th><th>Agency&nbsp;€199</th></tr></thead>
       <tbody>
-        <tr><th>Properties</th><td class="num">1</td><td class="num">3</td><td class="num">10</td><td class="num">unbegrenzt</td></tr>
+        <tr><th>Properties</th><td class="num">1</td><td class="num">3</td><td class="num">15</td><td class="num">unbegrenzt</td></tr>
         <tr><th>Historie</th><td class="num">30 Tage</td><td class="num">16 Monate</td><td class="num is">unbegrenzt</td><td class="num is">unbegrenzt</td></tr>
-        <tr><th>Datenquelle</th><td>live</td><td>Warehouse</td><td>Warehouse</td><td>Warehouse</td></tr>
+        <tr><th>Datenquelle</th><td>live</td><td>API-Warehouse</td><td class="is">+ Bulk Export</td><td class="is">+ Bulk Export</td></tr>
         <tr><th>Sync</th><td>—</td><td>täglich</td><td>stündlich</td><td>stündlich, priorisiert</td></tr>
-        <tr><th>Zeilen/Antwort</th><td class="num">100</td><td class="num">500</td><td class="num">2.000</td><td class="num">5.000</td></tr>
-        <tr><th>URL-Inspektion</th><td class="num">10/Tag</td><td class="num">100/Tag</td><td class="num">2.000/Tag</td><td class="num">2.000/Tag je Property</td></tr>
+        <tr><th>Zeilen/Antwort</th><td class="num">100</td><td class="num">1.000</td><td class="num">5.000</td><td class="num">5.000</td></tr>
+        <tr><th>URL-Inspektion</th><td class="num">10/Tag</td><td class="num">200/Tag</td><td class="num">2.000/Tag</td><td class="num">2.000/Tag je Property</td></tr>
         <tr><th>Analyse-Engine</th><td>—</td><td>Basis</td><td>vollständig</td><td>vollständig</td></tr>
         <tr><th>Alerts &amp; Reports</th><td>—</td><td>—</td><td>✓</td><td>✓ + White-Label</td></tr>
+        <tr><th>AVV · EU-Direktzugang</th><td>—</td><td>auf Anfrage</td><td class="is">✓</td><td class="is">✓</td></tr>
       </tbody>
     </table>
   </div>
-  <p style="margin-top:16px">Der Free-Plan bekommt bewusst kein Warehouse. Ein Backfill kostet 1.500 bis 3.500 API-Calls und belegt dauerhaft Speicher — bei kostenlosen Nutzern wäre das der größte Einzelposten der Betriebskosten und würde zugleich die geteilte Google-Quote zahlender Kunden schmälern. Genau die Grenze, an die der Nutzer stößt, ist damit die, die der bezahlte Plan aufhebt.</p>
+  <p style="margin-top:16px">Der Einstiegspreis liegt bewusst niedriger als zuvor geplant: Er muss gegen kostenlose Selbstbetriebs-Alternativen bestehen und gewinnt nur über Bequemlichkeit. Der Schwerpunkt verschiebt sich zum Agenturgeschäft — Mandantentrennung, White-Label, AVV und ein Ansprechpartner sind Dinge, die kein Open-Source-Projekt liefert.</p>
 </section>
 
 <section>
   <h2>Weg zum Start</h2>
   <p class="lede">Die Phasen sind eine echte Abfolge: jede setzt die vorige voraus. Phase 1 liefert bereits vollen Eigennutzen, alles danach ist additiv.</p>
   <div class="phases">
-    <div class="phase"><div class="pn">0</div><div><div class="pt">Setup und Anträge</div><div class="pd">GCP-Projekt, OAuth-Client, Cloudflare-Ressourcen, Monorepo. Vor allem: die Wartezeiten starten.</div></div><div class="px">2–3 Tage</div></div>
+    <div class="phase"><div class="pn">0</div><div><div class="pt">Setup und Anträge</div><div class="pd">Domain gsc2mcp.com, netcup-Server, GCP-Projekt, OAuth-Client, Monorepo. Vor allem: die Wartezeiten starten.</div></div><div class="px">3–4 Tage</div></div>
     <div class="phase"><div class="pn">1</div><div><div class="pt">MCP live</div><div class="pd">OAuth-Server, Google-Verbindung, Passthrough-Tools. Ab hier in Claude für eigene Properties nutzbar.</div></div><div class="px">1–2 Wochen</div></div>
-    <div class="phase"><div class="pn">2</div><div><div class="pt">Warehouse</div><div class="pd">D1-Schema, Sync-Worker, Rate-Limiter, Backfill. Die Volumenrechnung wird hier an echten Daten geprüft.</div></div><div class="px">2 Wochen</div></div>
+    <div class="phase"><div class="pn">2</div><div><div class="pt">Warehouse</div><div class="pd">PostgreSQL-Schema, Sync-Worker, Rate-Limiter — und beide Datenwege: API-Backfill über 16 Monate plus Bulk-Export-Anbindung.</div></div><div class="px">3 Wochen</div></div>
     <div class="phase"><div class="pn">3</div><div><div class="pt">Analyse-Engine</div><div class="pd">Attribution, Anomalien, CTR-Kurve, Kannibalisierung, Decay. Der eigentliche Produktkern.</div></div><div class="px">2 Wochen</div></div>
     <div class="phase"><div class="pn">4</div><div><div class="pt">Interaktiv und Web</div><div class="pd">MCP Apps, Dashboard, Landingpage — und nebenbei fast alle Artefakte, die Verifizierung und Directory verlangen.</div></div><div class="px">1–2 Wochen</div></div>
     <div class="phase"><div class="pn">5</div><div><div class="pt">Kommerz</div><div class="pd">Stripe, Quota-Enforcement, Trial, Recht, Einreichung ins Claude Connector Directory.</div></div><div class="px">2 Wochen</div></div>
@@ -476,15 +505,17 @@ footer {
 <section>
   <h2>Was den Vorsprung hält</h2>
   <ul class="clean">
-    <li><strong>Historie ist nicht rückwirkend aufholbar.</strong> Ein Wettbewerber, der morgen ein Warehouse baut, beginnt bei null — der Abstand wächst mit jedem Betriebstag.</li>
-    <li><strong>Die Zahlen sind nachrechenbar.</strong> Alle Analysen laufen deterministisch. Wer eine Zahl in ein Management-Meeting trägt, muss ihre Herleitung erklären können.</li>
-    <li><strong>EU-Hosting und AVV.</strong> Für Agenturen mit deutschen Mittelstands- oder Behördenkunden häufig ein Kriterium in der Beschaffung, das der US-Wettbewerber nicht bedient.</li>
-    <li><strong>Ehrlich benannte Lücken.</strong> Keine SERP-Daten, keine Backlinks, kein Keyword-Volumen, vorerst kein GA4. Das offen zu sagen kostet weniger als eine Erstattung nach zwei Wochen.</li>
+    <li><strong>Vollständige Daten statt Stichprobe.</strong> Der Bulk Export enthält alles außer den von Google anonymisierten Anfragen. Jeder Wettbewerber speichert die Top-N der API.</li>
+    <li><strong>Rechnen statt schätzen.</strong> Die Zerlegung summiert sich exakt zum Gesamteffekt, die CTR-Kurve stammt aus den eigenen Daten. Wer eine Zahl in ein Meeting trägt, muss ihre Herleitung erklären können.</li>
+    <li><strong>Meldet sich von selbst.</strong> Kein MCP-Anbieter im Feld tut das. Der Schritt vom Werkzeug zum Dienst — und die beste Begründung eines Abos.</li>
+    <li><strong>In Deutschland betrieben.</strong> Daten im Ruhezustand in Nürnberg, AVV, direkter Zugangsweg ohne US-Auftragsverarbeiter. Alle relevanten Wettbewerber sind US oder UK.</li>
+    <li><strong>Historie ist nicht rückwirkend aufholbar.</strong> Wer morgen anfängt, beginnt bei null — der Abstand wächst mit jedem Betriebstag.</li>
   </ul>
-</section>
+  <p style="margin-top:22px;font-size:14px;color:var(--muted)">Was der USP <em>nicht</em> behauptet: nicht „mehr Tools" (Advanced GSC hat 45, wir wollen 26), nicht „günstiger" (der Boden ist kostenlos), nicht „SEO-Komplettsuite" (keine Backlinks, kein Keyword-Volumen, kein SERP-Scraping).</p>
+  </section>
 
 <footer>
-  <div>Vollständige Konzeption in 12 Dokumenten — <span class="mono">github.com/alexanderdross/gsc-mcp</span>, Branch <span class="mono">claude/loving-rubin-64k8jm</span></div>
+  <div>Vollständige Konzeption in 13 Dokumenten — <span class="mono">github.com/alexanderdross/gsc-mcp</span> · geplante Domain <span class="mono">gsc2mcp.com</span></div>
   <div>Messwerte aus der Search Console API, 17.08.2026</div>
 </footer>
 

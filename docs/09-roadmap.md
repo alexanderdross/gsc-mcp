@@ -6,15 +6,15 @@ Zwei Ziele mit unterschiedlicher Dringlichkeit: eigener Nutzen möglichst früh,
 
 | Phase | Inhalt | Aufwand | Ergebnis |
 |---|---|---|---|
-| **0** | Setup und Anträge | 2–3 Tage | Infrastruktur steht, Google-Uhr läuft |
+| **0** | Setup und Anträge | 3–4 Tage | Infrastruktur steht, Google-Uhr läuft |
 | **1** | MCP live (Passthrough) | 1–2 Wochen | in Claude nutzbar für eigene Properties |
-| **2** | Warehouse | 2 Wochen | eigene Historie, Sampling überwunden |
+| **2** | Warehouse: API-Backfill **und** Bulk Export | 3 Wochen | eigene Historie, vollständige Daten — der USP |
 | **3** | Analyse-Engine | 2 Wochen | der eigentliche Produktkern |
 | **4** | Interaktiv und Web | 1–2 Wochen | MCP Apps, Dashboard, Landingpage |
 | **5** | Kommerz | 2 Wochen | Stripe, Limits, Livegang |
 | **6** | Ausbau | laufend | Alerts, GA4, Teams |
 
-Gesamt bis zum kommerziellen Start: rund **zehn Wochen Arbeitszeit** — die tatsächliche Kalenderdauer bestimmt die Google-Verifizierung, nicht die Entwicklung.
+Gesamt bis zum kommerziellen Start: rund **elf Wochen Arbeitszeit**. Die tatsächliche Kalenderdauer bestimmt die Google-Verifizierung, nicht die Entwicklung.
 
 ---
 
@@ -22,42 +22,50 @@ Gesamt bis zum kommerziellen Start: rund **zehn Wochen Arbeitszeit** — die tat
 
 **Der Sinn dieser Phase ist, die Wartezeiten früh zu starten.**
 
+- **Domain `gsc2mcp.com`** über Cloudflare Registrar registrieren (zum Einkaufspreis, nicht erstattungsfähig — Tippfehler kosten). Hostnamen: `www` für Web, `api` proxied für MCP und OAuth, `eu` als DNS-only-Direktweg
 - Google-Cloud-Projekt, OAuth-Client, Search Console API aktivieren
 - **OAuth-Verifizierung für `webmasters.readonly` einreichen** — Datenschutzerklärung, Demo-Video, Brand Verification. Dauer: mehrere Wochen
 - **Quotenerhöhung beantragen**, mit der Bedarfsrechnung aus [04-sync-pipeline.md](04-sync-pipeline.md)
-- Domain, DNS, Cloudflare-Account; D1, KV, R2, Queues anlegen (EU-Residenz)
-- Monorepo-Gerüst, TypeScript, Vitest, CI, Wrangler-Umgebungen `dev`/`staging`/`production`
+- netcup RS bestellen, Debian aufsetzen, härten; Docker, PostgreSQL, Caddy
+- Cloudflare-Zone einrichten: Full (strict), Origin-Zertifikat, Authenticated Origin Pulls, Ratenbegrenzung auf `/register` und `/token`, kein Caching auf `/mcp`
+- Offsite-Objektspeicher (EU) für Backups
+- Monorepo-Gerüst, TypeScript, Vitest, CI
 - Stripe-Konto im Testmodus
 
-Für die Verifizierung wird ein funktionsfähiger Zustimmungsablauf verlangt. Praktisch heißt das: Der Antrag geht raus, sobald Phase 1 den OAuth-Teil fertig hat — die restlichen Vorbereitungen laufen aber sofort.
+Die Domain steht ganz oben, weil die Google-Verifizierung sie voraussetzt: Die Datenschutzerklärung muss auf der verifizierten Domain liegen, bevor der Antrag überhaupt bearbeitet wird.
 
-**Risiko:** Wird die Verifizierung erst am Ende beantragt, verschiebt sie den kommerziellen Start um genau ihre Bearbeitungsdauer. Das ist der häufigste vermeidbare Fehler bei Produkten mit sensitiven Google-Scopes.
+**Risiko:** Wird die Verifizierung erst am Ende beantragt, verschiebt sie den kommerziellen Start um genau ihre Bearbeitungsdauer. Der häufigste vermeidbare Fehler bei Produkten mit sensitiven Google-Scopes.
 
 ## Phase 1 — MCP live
 
 **Ziel: eigener Nutzen ab Woche zwei.**
 
-- OAuth Authorization Server (`workers-oauth-provider`), Metadata-Endpunkte, DCR
+- OAuth Authorization Server (`node-oidc-provider`), Metadata-Endpunkte, DCR
 - Google-Verbindung, verschlüsselte Token-Ablage, Refresh-Kreislauf
-- MCP-Endpunkt über Streamable HTTP, `McpAgent` mit Sitzungszustand
+- MCP-Endpunkt über Streamable HTTP, **SSE-Keepalive alle 30 Sekunden** (sonst reißt die Verbindung hinter Cloudflare nach 15 Minuten)
+- Sitzungs-Registry mit Spiegelung nach `core.mcp_sessions`
 - Getippter GSC-Client mit Pagination, Backoff, Fehlerübersetzung
 - Tools: `get_started`, `get_capabilities`, `list_properties`, `select_property`, `search_performance` (live), `performance_timeseries` (live), `inspect_url`, `list_sitemaps`
 - Antwortbudget und `detail`-Stufen von Anfang an — nachträglich eingebaut wird das nie sauber
 
-**Abnahme:** In Claude verbinden, Property wählen, „Zeig mir die Top-20-Queries der letzten 28 Tage für aip.aero" beantworten lassen. Ab hier ist das Produkt für eigene Projekte brauchbar.
+**Abnahme:** In Claude verbinden, Property wählen, „Zeig mir die Top-20-Queries der letzten 28 Tage für aip.aero" beantworten lassen. Anschließend **auf `staging` hinter dem Cloudflare-Proxy** prüfen, dass eine Sitzung über 20 Minuten Leerlauf hält. Ab hier ist das Produkt für eigene Projekte brauchbar.
 
 ## Phase 2 — Warehouse
 
-- D1-Schema und Migrationen, `resolveDb(propertyId)` von Beginn an
-- Sync-Worker: Cron, Queues, Job-Planer, Cursor-Persistenz
-- Rate-Limiter als Durable Object mit den drei Ebenen
-- Backfill in Nutzwert-Reihenfolge, täglicher Delta-Sync über fünf Tage
-- Wörterbücher, Sammelposten, Monats-Rollups
-- Warehouse-Fallback-Logik in allen Performance-Handlern, `source`-Kennzeichnung
-- `get_sync_status`
-- Integritätstest `SUM(fact_query) == fact_totals`
+Die längste Phase, weil sie zwei Datenwege baut. Der zweite ist der USP.
 
-**Abnahme:** Backfill für `aip.aero` vollständig, Integritätstest grün, eine Abfrage über 16 Monate liefert Ergebnisse, die die Google-Oberfläche nicht mehr zeigen kann. **Zugleich die Gelegenheit, die Volumenrechnung aus [03-datenmodell.md](03-datenmodell.md) an echten Zahlen zu prüfen.**
+**Vorab zu entscheiden:** Wohin liefert der Bulk Data Export — in das BigQuery-Projekt des Kunden oder in unseres? Die Abwägung steht in [12-wettbewerb-usp.md](12-wettbewerb-usp.md); sie berührt Datenmodell und Onboarding und muss **vor** Beginn dieser Phase geklärt sein.
+
+- PostgreSQL-Schema und Migrationen, Partitionsverwaltung
+- Sync-Worker: pg-boss, Job-Planer, Cursor-Persistenz, systemd-Timer
+- Rate-Limiter über `core.rate_budget` mit den drei Ebenen
+- **Weg A — API-Backfill:** 16 Monate rückwärts in Nutzwert-Reihenfolge, `COPY` in Staging plus Upsert
+- **Weg B — Bulk Data Export:** Einrichtung anleiten, täglich aus BigQuery nach PostgreSQL spiegeln. Vollständige Daten, keine API-Quote, kein Delta-Sync mehr nötig
+- Wörterbücher, Sammelposten für anonymisierte Anfragen, Monats-Rollups
+- Warehouse-Fallback-Logik in allen Performance-Handlern, `source`-Kennzeichnung
+- `get_sync_status`, Integritätstest `SUM(fact_query) = fact_totals`
+
+**Abnahme:** Backfill für `aip.aero` vollständig, Bulk Export aktiv und gespiegelt, Integritätstest grün, eine Abfrage über 16 Monate liefert Ergebnisse, die die Google-Oberfläche nicht mehr zeigen kann. **Zugleich die Gelegenheit, die Volumenschätzung aus [03-datenmodell.md](03-datenmodell.md) an echten Zahlen zu prüfen** — insbesondere, wie viele verschiedene Suchanfragen pro Tag tatsächlich auftreten.
 
 ## Phase 3 — Analyse-Engine
 
@@ -67,50 +75,55 @@ Für die Verifizierung wird ein funktionsfähiger Zustimmungsablauf verlangt. Pr
 - `get_google_updates` mit Anbindung an die Anomalie-Erkennung
 - `bulk_inspect_urls` mit Budgetplanung, `index_coverage_overview`
 - MCP Prompts, MCP Resources
-- `export_data` über R2
+- `export_data` über Objektspeicher
 
 **Abnahme:** „Warum sind die Klicks auf /flugzeuge im Juli eingebrochen?" wird mit benannten Queries, Seiten und der Zerlegung in Nachfrage-, Ranking- und Snippet-Anteil beantwortet.
 
 ## Phase 4 — Interaktiv und Web
 
 - MCP Apps: `performance_explorer`, `property_picker`, `plan_upgrade` als `ui://`-Ressourcen
+- **Ein Panel, das durch die Bulk-Export-Einrichtung führt** — der Schritt ist der einzige echte Onboarding-Widerstand und verdient eine geführte Oberfläche
 - Landingpage mit Positionierung, Preisen, Beispieldialogen
 - Kunden-Dashboard: Properties, Sync-Status, Nutzung, Konto
 - Öffentliche Dokumentation, Datenschutzerklärung, AGB, Impressum, Support-Kontakt
+- Eine `ai-info`-Faktenseite für Sprachmodelle ([11-go-to-market.md](11-go-to-market.md))
 - Screenshots und Demo-Video für Directory und Google-Verifizierung
 
-Diese Phase erzeugt nebenbei fast alle Artefakte, die Directory-Einreichung und Google-Verifizierung ohnehin verlangen. Sie deshalb vor Phase 5 zu legen, ist kein Zufall.
+Diese Phase erzeugt fast alle Artefakte, die Directory-Einreichung und Google-Verifizierung ohnehin verlangen. Sie vor Phase 5 zu legen ist kein Zufall.
 
 ## Phase 5 — Kommerz
 
-- Stripe: Produkte, Preise, Checkout, Portal, Webhooks mit WebCrypto-Signaturprüfung und Idempotenz
+- Stripe: Produkte, Preise, Checkout, Portal, Webhooks mit Signaturprüfung und Idempotenz
 - Entitlement- und Quota-Gates im Tool-Router, Deckelung statt Abweisung
 - Free-Plan-Hinweise, `show_pricing`, Trial mit Erinnerungen
 - Herabstufung mit 90-Tage-Aufbewahrung
 - Onboarding-Strecke, Kontolöschung
-- Rechtsprüfung, AVV-Vorlage
+- **Wiederherstellungsübung** aus dem Backup — vor dem Livegang, nicht im Ernstfall
+- Rechtsprüfung, AVV-Vorlage, Unterauftragsverarbeiter-Liste inkl. Cloudflare
 - **Directory-Einreichung** ([11-go-to-market.md](11-go-to-market.md))
 
-**Abnahme:** Ein fremder Testnutzer schließt ohne Rückfrage Verbindung, Property-Auswahl, Backfill und Abo ab.
+**Abnahme:** Ein fremder Testnutzer schließt ohne Rückfrage Verbindung, Property-Auswahl, Bulk-Export-Einrichtung, Backfill und Abo ab.
 
 ## Phase 6 — Ausbau
 
-Nach Nachfrage priorisiert, nicht nach Reihenfolge:
+Nach Nachfrage priorisiert:
 
-- **Alerts und geplante Reports** — der größte Hebel, weil er das Produkt vom Werkzeug zum Dienst macht: Anomalien per E-Mail, Wochenreport als wartende Nachricht in der nächsten Claude-Sitzung
-- **GA4** — zweiter OAuth-Scope, eigenes Datenmodell; erschließt Conversion-Fragen, die GSC allein nicht beantwortet
+- **Alerts und geplante Reports** — nach der Wettbewerbsanalyse der wichtigste Punkt der Liste, weil ihn im MCP-Feld niemand anbietet und er das Produkt vom Werkzeug zum Dienst macht
+- **Warm Standby** — zweiter Server mit Streaming-Replikation; Voraussetzung, um Verfügbarkeit vertraglich zuzusagen
+- **GA4** — zweiter OAuth-Scope, eigenes Datenmodell; bekannter Rückstand gegenüber dem Wettbewerber
 - **Team-Zugänge und White-Label** — Voraussetzung für ernsthaftes Agenturgeschäft
-- **Core Web Vitals** aus CrUX — günstig zu ergänzen, guter Deckungsgrad mit dem Wettbewerber
-- **Kaltarchiv-Auslagerung** — Tagesfakten über 24 Monate nach R2, Rollups bleiben in D1
+- **Kaltarchiv-Auslagerung** — Tagesfakten über 24 Monate in den Objektspeicher, Rollups bleiben in PostgreSQL
 
 ---
 
 ## Kritischer Pfad
 
 ```
-Phase 0 ──▶ Phase 1 ──▶ Phase 2 ──▶ Phase 3 ──▶ Phase 4 ──▶ Phase 5 ──▶ Livegang
-   │                                                                        ▲
-   └──── Google-OAuth-Verifizierung (mehrere Wochen) ───────────────────────┘
+Phase 0 ──▶ 1 ──▶ 2 ──▶ 3 ──▶ 4 ──▶ 5 ──▶ Livegang
+   │                                          ▲
+   ├── Google-OAuth-Verifizierung (Wochen) ───┤
+   └── Domain + Datenschutzerklärung ─────────┘
+        (Voraussetzung der Verifizierung)
 ```
 
 Die Entwicklung ist selten der Engpass. Wird die Verifizierung in Phase 0 angestoßen, läuft sie parallel und ist zum Ende von Phase 5 erledigt. Wird sie vergessen, steht das fertige Produkt und wartet.
@@ -120,9 +133,12 @@ Die Entwicklung ist selten der Engpass. Wird die Verifizierung in Phase 0 angest
 | Risiko | Wirkung | Gegenmaßnahme |
 |---|---|---|
 | Google-Verifizierung dauert oder wird abgelehnt | kein kommerzieller Start | in Phase 0 einreichen; bis dahin Testmodus mit 100 Nutzern, der für Eigenbedarf und Beta reicht |
-| Projektweite GSC-Quote wird zum Engpass | Backfills stauen, Antworten verzögern sich | zentraler Rate-Limiter, Prioritäten, frühzeitiger Quotenantrag |
-| D1-Größenlimit erreicht | Schreibfehler im Betrieb | `resolveDb` ab Phase 2, Größenalarm, Shard-Pfad vorbereitet |
-| Volumenrechnung zu optimistisch | Plan-Grenzen und Kalkulation falsch | Validierung an echten Daten am Ende von Phase 2, vor der Preisfestlegung |
-| Anonymisierte Queries irritieren Nutzer | Vertrauensverlust in alle Zahlen | Anteil in jeder Antwort ausweisen, in der Dokumentation erklären |
-| Wettbewerber zieht mit Warehouse nach | Alleinstellung schrumpft | Historie ist nicht rückwirkend aufholbar — der Vorsprung wächst mit jedem Betriebstag |
+| **Wettbewerber besetzt die Bulk-Export-Position zuerst** | der USP fällt | prüfen, ob es bereits jemand tut ([12](12-wettbewerb-usp.md)); Phase 2 nicht verzögern |
+| Bulk-Export-Einrichtung schreckt Nutzer ab | Konversion bricht ein | geführtes Panel in Phase 4; Starter-Plan funktioniert ohne Bulk Export |
+| Preisdruck durch kostenlose Alternativen | Einstiegspläne tragen nicht | Schwerpunkt auf Agenturgeschäft, siehe [07-billing.md](07-billing.md) |
+| Server fällt aus | Connector offline, Kunden merken es | externe Überwachung auf **beiden** Hostnamen, Warm Standby in Phase 6 |
+| Cloudflare-Ausfall | Connector offline, obwohl Server läuft | dokumentierter Direktweg über `eu.gsc2mcp.com` |
+| SSE-Keepalive vergessen | sporadische Verbindungsabbrüche, schwer zuzuordnen | in Phase 1 auf `staging` hinter dem echten Proxy prüfen |
+| Datenverlust im Archiv | Alleinstellungsmerkmal weg — Daten über 16 Monate sind nirgends sonst | pgBackRest mit PITR, monatliche Parquet-Exporte, **Wiederherstellungsübung in Phase 5** |
+| Volumenschätzung zu optimistisch | Kalkulation falsch | Validierung an echten Daten am Ende von Phase 2, vor der Preisfestlegung |
 | Eigenbedarf lenkt vom Produkt ab | Bastellösung statt Produkt | Mandantenfähigkeit ab Phase 1 verbindlich, auch wenn zunächst nur ein Nutzer existiert |

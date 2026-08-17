@@ -5,44 +5,52 @@
 ```
 gsc-mcp/
 ├── apps/
-│   ├── mcp-server/          Worker: OAuth AS + MCP-Endpunkt
+│   ├── app/                 MCP-Server + OAuth Authorization Server
 │   │   ├── src/
-│   │   │   ├── index.ts             Einstieg, Routing
-│   │   │   ├── oauth/               AS-Endpunkte, Google-Verknüpfung, Zustimmung
-│   │   │   ├── agent.ts             McpAgent (Durable Object), Sitzungszustand
-│   │   │   ├── router.ts            Entitlement-Gate, Quota-Gate, Audit, Budget
-│   │   │   └── ui/                  ui://-Ressourcen der MCP Apps
-│   │   └── wrangler.toml
-│   ├── sync-worker/         Worker: Cron, Queue-Consumer, Rate-Limiter-DO
+│   │   │   ├── index.ts             Hono-Einstieg, Routing, Graceful Shutdown
+│   │   │   ├── oauth/               node-oidc-provider, Google-Verknüpfung, Zustimmung
+│   │   │   ├── mcp/
+│   │   │   │   ├── transport.ts     StreamableHTTP + SSE-Keepalive (30 s)
+│   │   │   │   ├── sessions.ts      Registry, Spiegelung nach core.mcp_sessions
+│   │   │   │   └── ui/              ui://-Ressourcen der MCP Apps
+│   │   │   └── router.ts            Entitlement-Gate, Quota-Gate, Audit, Antwortbudget
+│   │   └── Dockerfile
+│   ├── worker/              Sync
 │   │   ├── src/
-│   │   │   ├── scheduler.ts         Job-Planung aus sync_state
-│   │   │   ├── consumer.ts          Queue-Verarbeitung, Pagination, Upsert
-│   │   │   ├── limiter.ts           Durable Object, Token-Bucket, drei Ebenen
-│   │   │   └── maintenance.ts       Rollups, Parquet-Export, Beschneidung
-│   │   └── wrangler.toml
-│   └── web/                 Worker: Landing, Dashboard, Stripe
-│       ├── src/
-│       │   ├── routes/
-│       │   └── webhooks/stripe.ts
-│       └── wrangler.toml
+│   │   │   ├── scheduler.ts         Job-Planung aus core.sync_state
+│   │   │   ├── jobs/                Backfill · Delta · Hourly · Inspection
+│   │   │   ├── limiter.ts           Token-Bucket auf core.rate_budget
+│   │   │   └── maintenance.ts       Partitionen, Rollups, Parquet-Export, Beschneidung
+│   │   └── Dockerfile
+│   └── web/                 Landing, Dashboard, Docs, Stripe
+│       ├── src/routes/
+│       ├── src/webhooks/stripe.ts
+│       └── Dockerfile
 ├── packages/
 │   ├── core/                Domänentypen, Plan-Definitionen, Entitlement-Logik,
 │   │                        Fehlertypen, Datums- und Zeitraumhilfen
-│   ├── gsc-client/          Search-Console-API-Client: getippt, paginierend,
+│   ├── gsc-client/          Search-Console-Client: getippt, paginierend,
 │   │                        mit Backoff und Fehlerübersetzung
-│   ├── db/                  Drizzle-Schema, Migrationen, resolveDb(), Repositories
+│   ├── db/                  Drizzle-Schema, Migrationen, Repositories, COPY-Helfer
 │   ├── analytics/           Attribution, Anomalien, CTR-Kurve, Kannibalisierung,
 │   │                        Decay — reine Funktionen, keine I/O
 │   ├── mcp-tools/           Tool-Definitionen: Zod-Schemata, Annotationen,
 │   │                        Handler, Antwortformatierung, Prompts
 │   └── billing/             Stripe-Anbindung, Webhook-Verarbeitung
+├── deploy/
+│   ├── compose.yaml         app · worker · web · postgres · caddy
+│   ├── Caddyfile            inkl. flush_interval -1 auf /mcp
+│   ├── postgres/            Tuning-Konfiguration
+│   └── pgbackrest/          Backup-Konfiguration
 ├── docs/                    diese Konzeption
-└── scripts/                 Migrationslauf über alle Shards, Seed, Lasttest
+└── scripts/                 Seed, Lasttest, Wiederherstellungsübung
 ```
 
 ## Schnittarchitektur
 
 Die wichtigste Grenze verläuft um `packages/analytics`: **reine Funktionen ohne Datenbankzugriff und ohne Netzwerk.** Eingabe sind Arrays von Faktenzeilen, Ausgabe sind Ergebnisobjekte. Nur so lassen sich die Formeln aus [06-analyse-engine.md](06-analyse-engine.md) gegen feste Datensätze testen, ohne eine Datenbank hochzufahren — und nur so bleiben sie nachvollziehbar.
+
+Wo PostgreSQL die Rechnung besser erledigt als JavaScript — Median, Perzentile, Regressionssteigungen, Fensterfunktionen — liegt sie in `packages/db` als benannte Abfrage, und `analytics` bekommt das Ergebnis. Die Trennlinie ist: **SQL rechnet, TypeScript entscheidet und formuliert.**
 
 `packages/mcp-tools` enthält keine Geschäftslogik, sondern verbindet Schema, Datenzugriff und Formatierung. Ein Tool ist damit im Wesentlichen eine Deklaration:
 
@@ -54,41 +62,47 @@ export const strikingDistance = defineTool({
   input: z.object({ /* … */ }),
   requires: { plan: 'starter', grains: ['query'] },
   async handler(ctx, input) {
-    const rows = await ctx.db.queryFacts(/* … */)
-    const result = analytics.strikingDistance(rows, ctx.ctrCurve, input)
+    const rows = await ctx.db.strikingDistanceCandidates(ctx.propertyId, input)
+    const result = analytics.rankByPotential(rows, ctx.ctrCurve, input)
     return format(result, ctx.detail)
   },
 })
 ```
 
-Das `requires`-Feld ist der Grund, warum das Entitlement-Gate zentral funktionieren kann: Der Router liest es aus der Registry, statt dass jeder Handler seine eigene Prüfung mitbringt und dabei einer sie vergisst.
+Das `requires`-Feld ist der Grund, warum Entitlement- und Mandantenprüfung zentral funktionieren: Der Router liest es aus der Registry, statt dass jeder Handler seine eigene Prüfung mitbringt und dabei einer sie vergisst.
 
 ## Technologie
 
 | Bereich | Wahl | Begründung |
 |---|---|---|
-| Sprache | TypeScript, strict | ein Ökosystem über Worker, Sync und Web |
-| MCP | `@modelcontextprotocol/sdk` + `agents` (`McpAgent`) | Sitzungszustand im Durable Object |
-| OAuth | `@cloudflare/workers-oauth-provider` | DCR, PKCE, Token-Rotation fertig |
-| HTTP | Hono | leichtgewichtig, Workers-nativ |
-| Datenbank | Drizzle ORM auf D1 | getippte Migrationen, portables SQL |
+| Sprache | TypeScript, strict | ein Ökosystem über App, Worker und Web |
+| Laufzeit | Node 22 LTS | breiteste Bibliotheksunterstützung, langer Support |
+| MCP | `@modelcontextprotocol/sdk`, StreamableHTTP | offizielle Referenz |
+| OAuth AS | `node-oidc-provider` | DCR, PKCE, Resource Indicators, ausgereift |
+| HTTP | Hono | leichtgewichtig, gutes Typing, plattformunabhängig |
+| Datenbank | PostgreSQL 17 über Drizzle | getippte Migrationen, aber roher SQL-Zugriff wo nötig |
+| Queue | pg-boss | keine zusätzliche Infrastruktur |
 | Validierung | Zod | zugleich Quelle der MCP-Eingabeschemata |
-| Tests | Vitest, `@cloudflare/vitest-pool-workers` | Tests laufen in der echten Worker-Umgebung |
-| Deployment | Wrangler, GitHub Actions | – |
+| Tests | Vitest, Testcontainers | echte PostgreSQL-Instanz statt Attrappe |
+| Betrieb | Docker Compose, Caddy, systemd-Timer | wenige bewegliche Teile |
+| CI/CD | GitHub Actions → GHCR → SSH-Deploy | kein zusätzlicher Dienst |
 
-**Kein React im MCP-Server.** Die MCP-Apps-Oberflächen sind eigenständige HTML-Dokumente mit minimalem JavaScript. Sie laufen in einer abgeschotteten iframe und müssen klein und schnell sein; ein Framework-Bundle wäre hier reiner Ballast.
+**Testcontainers statt In-Memory-Attrappe.** Partitionierung, `ON CONFLICT` auf partitionierten Tabellen, Abfragepläne und Trigram-Indizes verhalten sich nur in echtem PostgreSQL wie im Betrieb. Eine Attrappe würde genau die Fehler durchlassen, die später wehtun.
+
+**Kein React im MCP-Server.** Die MCP-Apps-Oberflächen sind eigenständige HTML-Dokumente mit minimalem JavaScript. Sie laufen in einer abgeschotteten iframe und müssen klein und schnell sein; ein Framework-Bundle wäre Ballast.
 
 ## Tests
 
 | Ebene | Umfang |
 |---|---|
 | Unit | `analytics` gegen feste Datensätze mit bekannten Ergebnissen; Eigenschaftstest der Attributions-Invariante |
-| Integration | `gsc-client` gegen aufgezeichnete Antworten inklusive Fehler- und Paginierungsfällen |
-| Datenbank | Migrationen und Repositories gegen Miniflare-D1 |
-| Sicherheit | Mandantentrennung: iteriert über die Tool-Registry und erwartet bei fremder `property_id` einen Fehler |
-| Ende zu Ende | MCP Inspector gegen `wrangler dev`; anschließend echter Claude-Client gegen `staging` |
+| Integration | `gsc-client` gegen aufgezeichnete Antworten inklusive Fehler-, Quoten- und Paginierungsfällen |
+| Datenbank | Migrationen, Partitionsrouting, Pruning und Upserts gegen echtes PostgreSQL |
+| Abstimmung | `SUM(fact_query) = fact_totals` als Eigenschaftstest über generierte Sync-Läufe |
+| Sicherheit | Mandantentrennung: iteriert über die Tool-Registry, erwartet bei fremder `property_id` einen Fehler |
+| Ende zu Ende | MCP Inspector gegen die lokale Compose-Instanz; anschließend echter Claude-Client gegen `staging` **hinter dem Proxy** |
 
-Der Mandantentrennungs-Test iteriert bewusst über die Registry statt über eine gepflegte Liste — so ist ein neu hinzugefügtes Tool automatisch abgedeckt, auch wenn niemand daran denkt.
+Die letzte Zeile ist keine Formalie. Lokal gibt es kein Cloudflare, also treten weder das 125-Sekunden-Limit noch das 900-Sekunden-Idle-Timeout noch Pufferung auf. SSE-Keepalive und das Rückgabeverhalten langer Operationen können deshalb **nur auf `staging`** verifiziert werden.
 
 ## Konventionen
 
@@ -96,5 +110,5 @@ Der Mandantentrennungs-Test iteriert bewusst über die Registry statt über eine
 - Kein `any` in öffentlichen Signaturen
 - Datenzugriff ausschließlich über `packages/db`; kein SQL in Handlern
 - Jedes neue Tool bringt Zod-Schema, Annotationen, `requires`, Test und einen Eintrag in [05-tools.md](05-tools.md) mit
-- Migrationen sind vorwärtsgerichtet und laufen über alle Shards
-- Secrets ausschließlich über Wrangler; im Repository nur `.dev.vars.example`
+- Migrationen vorwärtsgerichtet; Indizes auf Faktentabellen mit `CREATE INDEX CONCURRENTLY` je Partition
+- Secrets ausschließlich über eingehängte Dateien; im Repository nur `.env.example`

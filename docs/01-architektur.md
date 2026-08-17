@@ -1,124 +1,224 @@
 # 01 — Architektur
 
-## Überblick
+## Plattformentscheidung
+
+**netcup Root Server in Nürnberg, mit Cloudflare als vorgelagertem Proxy.** Der Server trägt Anwendung, Warehouse und Sync; Cloudflare übernimmt TLS am Rand, DDoS-Abwehr, WAF und Ratenbegrenzung.
+
+Die ursprüngliche Planung sah Cloudflare Workers als Laufzeitumgebung vor. Diese Entscheidung wurde revidiert, nachdem Datenmodell und Analyse-Engine ausgeschrieben waren — der Engpass dieses Produkts ist die Datenbank, nicht die Runtime. Drei Gründe gaben den Ausschlag:
+
+**1 — D1 kämpft gegen den Entwurf.** Die Analyse-Engine braucht Median, MAD, Perzentile, Regressionssteigungen und Fensterfunktionen über Monate. SQLite kennt weder `percentile_cont` noch `regr_slope`; jede dieser Funktionen müsste in JavaScript nachgebaut werden, mit allen Zeilen im Speicher. In PostgreSQL sind es Bordmittel. Dazu das Größenlimit von 10 GB je D1-Datenbank bei 2,5–4 GB pro Property und Jahr — der gesamte Shard-Apparat der Vorversion (`resolveDb`, Shard-Provisionierung, Migrationen über Shards, Größenalarme) entfällt zugunsten deklarativer Partitionierung.
+
+**2 — Die Kosten skalieren falsch herum.** D1 rechnet nach geschriebenen Zeilen ab, und jeder Index kostet eine zusätzliche. Der tägliche Delta-Sync einer mittelgroßen Property liegt bei geschätzt ~250.000 Writes, also rund 6,8 Mio. pro Monat. Die im Paid-Plan enthaltenen 50 Mio. decken damit etwa sieben Properties; darüber kostet jede Million einen US-Dollar. Bei 150 Properties liegt allein dieser Posten bei rund 950 $/Monat, gegenüber 17 €/Monat für den gesamten Server. Bei Plänen von 19–49 € je Kunde wäre die Marge negativ. *(Schätzung mit zwei unsicheren Annahmen — Index-Verstärkung 2–3× und Zeilen pro Tag; die Größenordnung hält auch bei Faktor 3 Fehler.)*
+
+**3 — Der Edge-Vorteil als Laufzeit ist hier keiner.** Jeder relevante Tool-Call trifft das Warehouse. Läge das Warehouse in Deutschland und der Worker nahe Claudes Infrastruktur, wäre jede Abfrage ein interkontinentaler Roundtrip — und die Analysetools setzen mehrere ab. Ein Server, der seine eigene Datenbank lokal anspricht, ist Ende zu Ende schneller.
+
+Cloudflare fällt damit nicht weg, sondern wechselt die Rolle: vom Ausführungsort zum Schutzschild. In dieser Rolle bringt es genau das, was ein einzelner Server nicht selbst kann.
+
+**Was das kostet:** Du betreibst die Maschine — Patches, Backups, Monitoring. Nach Einrichtung geschätzt zwei bis vier Stunden im Monat. Und der Server bleibt ein Single Point of Failure; der Weg zur Redundanz steht in [09-roadmap.md](09-roadmap.md).
+
+## Dimensionierung
+
+Empfehlung **RS 2000 G12**: 8 dedizierte Kerne (AMD EPYC 9645), 16 GB RAM, 512 GB NVMe, rund 17 €/Monat. Bei etwa 3 GB pro Property und Jahr trägt die Platte über 150 Property-Jahre. Faustregel: Datenbestand unter 350 GB halten, damit WAL, Vakuum-Spitzen und lokale Dumps Luft haben.
+
+Cloudflare läuft im kostenlosen Tarif. Alles Benötigte — Proxy, TLS, WAF-Grundregeln, Ratenbegrenzung, Authenticated Origin Pulls — ist dort enthalten.
+
+## Topologie
 
 ```
-                        Claude (Web · Desktop · Code · Mobile)
-                                      │
-                    Streamable HTTP + OAuth 2.1 (PKCE, DCR, RFC 8707)
-                                      │
-┌─────────────────────────────── Worker: mcp-server ───────────────────────────────┐
-│                                                                                   │
-│  /.well-known/*  ·  /register  ·  /authorize  ·  /token   ← OAuth AS              │
-│         │                                                                         │
-│         ▼                                                                         │
-│  /mcp  →  McpAgent (Durable Object je Session)                                    │
-│              │  hält: user_id, gewählte Property, Präferenzen                     │
-│              ▼                                                                    │
-│           Tool-Router                                                             │
-│              ├─ Entitlement-Gate  (Plan aus D1, Cache in KV)                      │
-│              ├─ Quota-Gate        (Zähler in D1, Fenster in KV)                   │
-│              ├─ Handler           (liest D1-Warehouse, Fallback GSC-API live)     │
-│              └─ Response-Budget   (Kürzung + expliziter Hinweis)                  │
-│                                                                                   │
-│  MCP Resources (Property-Metadaten) · MCP Prompts · MCP Apps (ui://)              │
-└───────────────────────────────────────────────────────────────────────────────────┘
-      │                    │                   │                    │
-      ▼                    ▼                   ▼                    ▼
-  D1 (Control)      D1 (Warehouse,        R2 (Parquet-Archiv,   KV (Token-Cache,
-                     ggf. geshardet)       Exporte)              Entitlements)
-                          ▲                     ▲
-                          │                     │
-                    ┌─────┴─────────────────────┴────────────────────┐
-                    │           Worker: sync-worker                   │
-                    │  Cron (täglich · stündlich) → Queue-Producer    │
-                    │  Queue-Consumer → GSC-API → Upsert D1           │
-                    │  Rate-Limiter (Durable Object, Token-Bucket)    │
-                    └────────────────────────┬───────────────────────┘
-                                             ▼
-                                Google Search Console API
-
-┌─────────────────────── Worker: web ───────────────────────┐
-│  Landingpage · Dashboard · Stripe Checkout/Portal          │
-│  /webhooks/stripe  (Signaturprüfung, idempotent)           │
-│  Datenschutz · AGB · Docs (Pflicht fürs Directory)         │
-└───────────────────────────────────────────────────────────┘
+                    Claude (Web · Desktop · Code · Mobile)
+                                    │
+┌─────────────────────── Cloudflare (Free) ──────────────────────────────┐
+│  TLS am Rand · DDoS · WAF · Rate Limiting auf /register und /token     │
+│  Origin-IP verborgen · Wartungsseite bei Ausfall                        │
+│  KEIN Caching auf /mcp · no-transform · SSE unverändert durchgereicht   │
+└────────────────────────────────┬───────────────────────────────────────┘
+              Full (strict) + Authenticated Origin Pulls (mTLS)
+                                 │
+╔════════════════ netcup Root Server · Nürnberg ═══════════════════════════╗
+║   ufw: 443 nur aus Cloudflare-IP-Bereichen                               ║
+║   ┌─────────────────────────────▼────────────────────────────────────┐   ║
+║   │  Caddy — Origin-Zertifikat, Reverse Proxy                        │   ║
+║   │  flush_interval -1 auf /mcp  (SSE darf nicht gepuffert werden)   │   ║
+║   └───────┬──────────────────────────────────────┬──────────────────┘   ║
+║           │                                      │                       ║
+║   ┌───────▼────────────────────┐   ┌─────────────▼──────────────────┐   ║
+║   │  app  (Node 22, Hono)      │   │  web                           │   ║
+║   │                            │   │  Landing · Dashboard · Docs    │   ║
+║   │  OAuth AS                  │   │  Stripe Checkout · Webhooks    │   ║
+║   │   node-oidc-provider       │   └─────────────┬──────────────────┘   ║
+║   │   DCR · PKCE · RFC 8707    │                 │                       ║
+║   │                            │                 │                       ║
+║   │  MCP /mcp                  │                 │                       ║
+║   │   StreamableHTTPTransport  │                 │                       ║
+║   │   SSE-Keepalive alle 30 s  │                 │                       ║
+║   │   Session-Registry         │                 │                       ║
+║   │                            │                 │                       ║
+║   │  Tool-Router               │                 │                       ║
+║   │   Entitlement · Quota      │                 │                       ║
+║   │   Handler → SQL            │                 │                       ║
+║   │   Antwortbudget            │                 │                       ║
+║   └───────┬────────────────────┘                 │                       ║
+║           │                                      │                       ║
+║   ┌───────▼──────────────────────────────────────▼──────────────────┐   ║
+║   │  PostgreSQL 17                                                  │   ║
+║   │   Control Plane · Warehouse (Monatspartitionen)                 │   ║
+║   │   pg-boss (Job-Queue)  ·  Rate-Budget (Token-Bucket)            │   ║
+║   └───────▲─────────────────────────────────────────────────────────┘   ║
+║           │                                                              ║
+║   ┌───────┴────────────────────┐  systemd-Timer: täglich · stündlich    ║
+║   │  worker  (Node 22)         │  pgBackRest → Offsite                  ║
+║   │   Job-Planer               │                                         ║
+║   │   Backfill · Delta · Hourly│                                         ║
+║   │   GSC-Client (COPY-Bulk)   │                                         ║
+║   └───────┬────────────────────┘                                        ║
+╚═══════════│══════════════════════════════════════════════════════════════╝
+            │
+            ▼
+   Google Search Console API            Offsite: Objektspeicher (EU)
+                                        Backups · Parquet-Kaltarchiv
 ```
 
-## Komponenten und ihre Begründung
+## Cloudflare davor — was zu beachten ist
 
-### mcp-server (Worker)
+Der Proxy bringt echten Nutzen, hat aber drei Eigenschaften, die den MCP-Transport brechen, wenn man sie übersieht. Alle drei sind billig zu beherrschen, aber keine davon ist optional.
 
-Der einzige Endpunkt, den Claude kennt. Er vereint drei Rollen:
+### Die Zeitlimits
 
-**OAuth Authorization Server.** Claude spricht MCP-Server nicht mit statischen API-Keys an, sondern über OAuth 2.1 mit Dynamic Client Registration — der Client registriert sich selbst. Cloudflares `@cloudflare/workers-oauth-provider` implementiert das Nötige und legt Grants und Tokens in KV ab. Details in [02-auth.md](02-auth.md).
+| Limit | Wert | Fehler | Konfigurierbar |
+|---|---|---|---|
+| Proxy **Read** Timeout | 125 s | 524 | nur Enterprise |
+| Proxy **Idle** Timeout | 900 s | 520 | nein |
+| Proxy **Write** Timeout | 30 s | 524 | nein |
 
-**MCP-Endpunkt über Streamable HTTP.** Der frühere HTTP+SSE-Transport ist abgelöst; Streamable HTTP arbeitet mit einem einzigen Endpunkt und funktioniert hinter Load Balancern und Proxies. Protokollversion und Session-Handling folgen der jeweils aktuellen Spezifikation.
+**Read Timeout (125 s):** Der Origin muss innerhalb von 125 Sekunden *mit einer Antwort beginnen*. Für jeden Tool-Call heißt das: keine synchron durchlaufende Langoperation. `bulk_inspect_urls` etwa darf nicht 2.000 URLs im Request abarbeiten, sondern nimmt den Auftrag an, stößt einen Job an und antwortet sofort mit dem Fortschrittsverweis. Das war ohnehin der bessere Entwurf; der Proxy macht es verbindlich.
 
-**Session-Zustand im Durable Object.** Der `McpAgent` aus dem `agents`-SDK gibt jeder Sitzung ein eigenes Durable Object. Dort liegt die gewählte Property. Das ist der Grund, warum `select_property` überhaupt funktioniert: Ohne Sitzungszustand müsste jeder einzelne Tool-Call die Property mitschleppen, was den Agenten Tokens kostet und Fehler provoziert. Der Wettbewerber nutzt dasselbe Muster.
+**Idle Timeout (900 s):** Fließen 15 Minuten lang keine Bytes, wird die Verbindung mit Fehler 520 abgeräumt. Der langlebige SSE-Strom des MCP-Transports tut in ruhigen Phasen genau das. **Der Server muss deshalb alle 30 Sekunden einen SSE-Kommentar (`: ping\n\n`) senden.** Ohne das reißen Sitzungen in unregelmäßigen Abständen ab — ein Fehlerbild, das sich clientseitig als sporadisches Hängen zeigt und sehr schwer zuzuordnen ist.
 
-### sync-worker (Worker)
+### Keine Transformation auf `/mcp`
 
-Getrennt vom MCP-Server, weil die Anforderungen gegensätzlich sind: Der MCP-Server muss in Millisekunden antworten, der Sync läuft minutenlang und darf scheitern und wiederholen.
+Antworten tragen `Cache-Control: no-cache, no-transform`, und für den Pfad wird per Cache-Regel jedes Caching abgeschaltet. `no-transform` verhindert, dass Cloudflare den Strom umkodiert oder zwischenpuffert. Zusätzlich gehört in Caddy `flush_interval -1` an den `reverse_proxy` dieses Pfads — sonst puffert schon der lokale Proxy und der Fehler entsteht vor Cloudflare.
 
-**Cron Triggers** stoßen an, **Queues** entkoppeln. Ein 16-Monats-Backfill sind je nach Grain mehrere tausend API-Calls — das passt in kein Request-Zeitfenster und muss als Auftragsstrom laufen, der Unterbrechungen übersteht.
+### Origin-Absicherung
 
-**Der Rate-Limiter ist ein eigenes Durable Object und nicht verhandelbar.** Die Quoten der Search Console API gelten unter anderem **pro Google-Cloud-Projekt** — also geteilt über alle unsere Kunden hinweg. Ohne zentrale Drosselung reißt der Backfill eines einzigen großen Neukunden die Quote für alle anderen. Ein Durable Object ist per Definition ein Singleton mit serialisiertem Zugriff und damit die korrekte Stelle für einen globalen Token-Bucket. Details in [04-sync-pipeline.md](04-sync-pipeline.md).
+SSL-Modus **Full (strict)** mit einem Cloudflare-Origin-Zertifikat in Caddy, dazu **Authenticated Origin Pulls** (im Free-Tarif verfügbar) und eine `ufw`-Regel, die Port 443 nur aus den Cloudflare-IP-Bereichen zulässt. Damit erreicht niemand den Server an Cloudflare vorbei, und die Origin-IP bleibt verborgen.
 
-### Datenhaltung
+Die Alternative wäre ein Cloudflare Tunnel — dann entfallen eingehende Ports vollständig. Bewusst nicht gewählt, weil der Tunnel den direkten Zugang unmöglich macht, den der nächste Abschnitt braucht.
 
-**D1 (SQLite)** trägt zwei getrennte Aufgaben:
+### Der unproxied Zweitname
 
-- *Control Plane* — Nutzer, Properties, Credentials, Abos, Quoten, Sync-Zustand, Audit-Log. Klein, transaktional, eine Datenbank für alle Mandanten mit `user_id`-Filterung.
-- *Warehouse* — die Faktentabellen. Groß, schreibintensiv, primär analytische Leseabfragen.
+Neben `api.gsc2mcp.com` wird ein zweiter Hostname eingerichtet, dessen DNS-Eintrag **nicht** über Cloudflare läuft und der direkt auf den Server in Nürnberg zeigt. Er löst zwei verschiedene Probleme mit einem Mittel:
 
-**R2** ist Kaltarchiv und Export-Kanal: monatliche Parquet-Dateien je Property (billiger als D1, ideal für Wiederherstellung und externe Weiterverarbeitung) sowie Nutzer-Exporte über präsignierte URLs mit kurzer Gültigkeit.
+- **Datenschutz.** Cloudflare terminiert TLS und verarbeitet damit personenbezogene Daten. Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, bekommen den direkten Weg. Siehe [08-security-dsgvo.md](08-security-dsgvo.md).
+- **Ausfall.** Ein Cloudflare-Ausfall legt den Connector lahm, obwohl der Server läuft. Der Zweitname ist der dokumentierte Notweg.
 
-**KV** cacht, was oft gelesen und selten geschrieben wird: aktive Google-Access-Tokens (bis kurz vor Ablauf), aufgelöste Entitlements, OAuth-Grants.
+Er kostet fast nichts: derselbe Caddy, ein zusätzliches Let's-Encrypt-Zertifikat, ein A-Record ohne Proxy.
 
-### web (Worker)
+### Was der Proxy tatsächlich bringt
 
-Landingpage, Kunden-Dashboard, Stripe-Checkout und -Webhooks. Zusätzlich beherbergt er drei Seiten, die für die Listung im Claude Connector Directory **zwingend** sind: öffentliche Datenschutzerklärung, öffentliche Dokumentation und Support-Kontakt. Siehe [11-go-to-market.md](11-go-to-market.md).
+DDoS-Abwehr und verborgene Origin-IP für einen Server ohne Redundanz. Eine Wartungsseite, wenn der Origin nicht antwortet. Und der praktisch wertvollste Punkt: **Ratenbegrenzung am Rand auf `/register` und `/token`.** Dynamic Client Registration ist ein unauthentifizierter Endpunkt, der Datensätze anlegt — ein klassisches Missbrauchsziel. Diese Regel am Rand zu haben statt in der Anwendung bedeutet, dass eine Missbrauchswelle den Server gar nicht erst erreicht.
 
-## Skalierungspfad
+## Komponenten
 
-D1 hat ein Größenlimit pro Datenbank (Planungsannahme: 10 GB — vor Umsetzung gegen die aktuelle Cloudflare-Dokumentation prüfen). Eine große Property kann auf vollem Grain in diese Größenordnung wachsen, siehe Volumenrechnung in [03-datenmodell.md](03-datenmodell.md).
+### Caddy
 
-Der Plan sieht das von Anfang an vor, ohne es sofort zu bauen:
+Reverse Proxy und Zertifikatsverwaltung: Cloudflare-Origin-Zertifikat für den proxied Hostnamen, Let's Encrypt für den direkten. Route auf `/mcp` mit `flush_interval -1`, alles Übrige normal.
 
-1. **Stufe 1 — eine Warehouse-D1 für alle.** Ausreichend für die ersten Kunden. Die Spalte `properties.database_id` existiert bereits, steht aber auf dem Default.
-2. **Stufe 2 — Sharding je Property.** Überschreitet eine Property einen Schwellwert, wird per Cloudflare-API eine eigene D1 provisioniert und `database_id` umgesetzt. Der Datenzugriff läuft ausschließlich über eine `resolveDb(propertyId)`-Funktion, sodass kein Handler angefasst werden muss.
-3. **Stufe 3 — Notausgang Postgres.** Für Volumen jenseits von D1: Hyperdrive vor einer Postgres-Instanz. Deshalb bleibt das Datenmodell portabel — reines SQL, Drizzle-Migrationen, keine SQLite-Spezifika in Geschäftslogik.
+### app — MCP-Server und OAuth Authorization Server
 
-Diese Reihenfolge ist bewusst: Stufe 1 kostet nichts an Komplexität, Stufe 2 ist ein Tagesprojekt, wenn `resolveDb` von Beginn an existiert, und Stufe 3 wird realistisch nie gebraucht.
+Node 22 LTS, TypeScript, Hono.
+
+**OAuth AS** über `node-oidc-provider`. Es deckt ab, was der Remote-MCP-Anschluss verlangt: Dynamic Client Registration (RFC 7591), PKCE, Resource Indicators (RFC 8707) und die Metadata-Endpunkte. Gegenüber Cloudflares fertiger Bibliothek mehr Konfiguration, aber kein neues Risiko — die Bibliothek ist ausgereift und weit im Einsatz. Details in [02-auth.md](02-auth.md).
+
+**MCP-Endpunkt** über `StreamableHTTPServerTransport` aus dem offiziellen SDK, mit dem oben beschriebenen Keepalive.
+
+**Sitzungszustand.** In der Cloudflare-Variante hielt ein Durable Object je Sitzung den Property-Kontext. Hier genügt eine Registry im Prozess, die nach `Mcp-Session-Id` schlüsselt und den Kontext zusätzlich in `mcp_sessions` schreibt, damit ein Neustart laufende Sitzungen nicht verliert. Weniger Apparat, gleiches Verhalten.
+
+### worker — Sync
+
+Eigener Prozess, weil die Anforderungen gegensätzlich sind: Der MCP-Server muss in Millisekunden antworten, ein Backfill läuft stundenlang und darf scheitern und wiederholen. Getrennte Prozesse heißen auch, dass ein aus dem Ruder laufender Sync die Interaktivität nicht mitreißt.
+
+**Job-Queue: pg-boss** in derselben PostgreSQL-Instanz — kein zusätzlicher Dienst, Jobs transaktional konsistent mit den Daten, Zustand mit normalem SQL einsehbar. Für dieses Volumen wären Redis oder RabbitMQ unnötiger Betriebsaufwand.
+
+**Zeitsteuerung: systemd-Timer.** Idempotent aktivierbar, protokollieren ins Journal, einzeln nachfahrbar.
+
+**Rate-Limiter.** In der Cloudflare-Variante brauchte es dafür ein Durable Object, weil ein global serialisierter Singleton fehlte. Hier ist der Token-Bucket eine kleine Tabelle mit `SELECT … FOR UPDATE`: korrekt, nachvollziehbar, rund vierzig Zeilen. Zwingend bleibt er trotzdem — die Search-Console-Quoten gelten pro Google-Cloud-Projekt und damit geteilt über alle Kunden ([04-sync-pipeline.md](04-sync-pipeline.md)).
+
+### web — Landingpage, Dashboard, Stripe
+
+Eigener Prozess hinter demselben Caddy. Beherbergt drei Seiten, die für Directory-Listung und Google-Verifizierung **zwingend** sind: öffentliche Datenschutzerklärung, öffentliche Dokumentation, Support-Kontakt ([11-go-to-market.md](11-go-to-market.md)).
+
+### PostgreSQL 17
+
+Trägt vier Aufgaben in einer Instanz: Control Plane, Warehouse, Job-Queue, Rate-Budget. Getrennte Schemas, ein Betriebsobjekt.
+
+Ausgangswerte für 16 GB RAM, vor Produktivgang an echten Abfragen nachzujustieren:
+
+```
+shared_buffers                  = 4GB
+effective_cache_size            = 12GB
+work_mem                        = 64MB     # Analysen sortieren viel
+maintenance_work_mem            = 1GB      # Index-Aufbau, VACUUM
+max_parallel_workers            = 8
+max_parallel_workers_per_gather = 4
+random_page_cost                = 1.1      # NVMe, kein Spindelaufschlag
+wal_compression                 = zstd
+```
+
+**Kein Redis.** Was zwischengespeichert werden muss — Google-Access-Tokens, aufgelöste Entitlements — passt in einen prozesslokalen LRU-Cache mit kurzer Gültigkeit. Bei einem einzigen Anwendungsknoten löst Redis ein Problem, das nicht existiert. Beim Übergang auf mehrere Knoten kommt es dazu, nicht vorher.
 
 ## Warehouse-First mit Live-Fallback
 
-Jeder Performance-Handler folgt derselben Entscheidung:
+Unabhängig von der Plattform und deshalb unverändert:
 
 ```
 Anfrage
   │
-  ├─ Ist der Zeitraum vollständig im Warehouse gedeckt?  ──ja──▶  D1-Query
+  ├─ Zeitraum vollständig im Warehouse gedeckt?  ──ja──▶  SQL
   │
-  ├─ Teilweise gedeckt?  ──▶  D1 für den gedeckten Teil
+  ├─ Teilweise gedeckt?  ──▶  SQL für den gedeckten Teil
   │                           + Live-Call für die Lücke
-  │                           + Hinweis im Output, welcher Teil woher stammt
+  │                           + Hinweis, welcher Teil woher stammt
   │
-  └─ Nicht gedeckt (z. B. Backfill läuft noch, Free-Plan)?  ──▶  Live-Call,
-                                                                 Google-Limits gelten
+  └─ Nicht gedeckt (Backfill läuft, Free-Plan)?  ──▶  Live-Call,
+                                                      Google-Limits gelten
 ```
 
-Die Deckung ergibt sich aus `sync_state` je Property und Grain. Entscheidend ist die Transparenz: Der Nutzer muss erkennen können, ob eine Zahl aus dem eigenen Archiv oder live von Google stammt — insbesondere während eines laufenden Backfills, wo Antworten sonst unerklärlich unvollständig wirken.
+Die Deckung ergibt sich aus `sync_state` je Property und Grain. Der Nutzer muss erkennen können, ob eine Zahl aus dem eigenen Archiv oder live von Google stammt — sonst wirken Antworten während eines laufenden Backfills unerklärlich unvollständig.
 
-Live-Fallback ist außerdem der Free-Plan-Modus: Ohne Sync gibt es kein Warehouse, also arbeitet der Server dort wie ein klassischer Passthrough — funktionsfähig, aber mit Googles Grenzen, was zugleich das ehrlichste Upgrade-Argument ist.
+Live-Calls aus dem `app`-Prozess buchen ihr Kontingent über dieselbe Rate-Budget-Tabelle wie der Worker, mit höherer Priorität. Ein wartender Nutzer geht immer vor einem Hintergrundauftrag.
+
+## Betrieb
+
+| Belang | Umsetzung |
+|---|---|
+| Betriebssystem | Debian stable, `unattended-upgrades` für Sicherheitsaktualisierungen |
+| Prozesse | Docker Compose (`app`, `worker`, `web`, `postgres`, `caddy`) |
+| Deployment | GitHub Actions baut Images, pusht in die GitHub Container Registry, SSH-Deploy zieht und startet neu |
+| Migrationen | laufen beim Start von `app`, bevor der Port geöffnet wird |
+| Backups | pgBackRest: wöchentlich voll, täglich inkrementell, WAL-Archivierung für Point-in-Time-Recovery, offsite in EU-Objektspeicher |
+| Monitoring | Prometheus mit `postgres_exporter` und `node_exporter`, Grafana lokal |
+| Verfügbarkeitsprüfung | **extern**, und zwar auf beiden Hostnamen — proxied und direkt |
+| Härtung | SSH nur mit Schlüssel, Root-Login aus, `ufw` erlaubt 443 nur aus Cloudflare-Bereichen plus SSH, `fail2ban`, PostgreSQL bindet ausschließlich auf localhost |
+
+Zwei Zeilen verdienen Nachdruck. Die **externe** Verfügbarkeitsprüfung ist der einzige Weg, einen Ausfall zu bemerken, bevor ein Kunde ihn meldet — eine Überwachung, die mit dem Überwachten ausfällt, meldet nie etwas. Und sie muss **beide** Hostnamen prüfen: Nur so lässt sich ein Cloudflare-Problem von einem Server-Problem unterscheiden, was im Störungsfall die erste und wichtigste Frage ist.
+
+## Skalierungspfad
+
+1. **Ein Server.** Trägt die absehbare Kundenzahl. Aufrüstung durch größeren RS.
+2. **Datenbank trennen.** Ein zweiter RS nur für PostgreSQL. Verdoppelt die CPU für Analysen.
+3. **Warm Standby.** Streaming-Replikation auf einen zweiten Server, Umschaltung über Cloudflare-Load-Balancing oder DNS. Beseitigt den Single Point of Failure — Voraussetzung dafür, Verfügbarkeit vertraglich zuzusagen.
+4. **Kaltarchiv auslagern.** Tagesfakten älter als 24 Monate als Parquet in den Objektspeicher, Monats-Rollups bleiben in PostgreSQL. Mehrjahresvergleiche funktionieren weiter ohne Zugriff auf das Archiv.
+
+Stufe 3 ist die einzige, die vor dem kommerziellen Start bedacht werden muss — nicht zwingend gebaut, aber bepreist und in den AGB abgebildet.
 
 ## Umgebungen
 
 | Umgebung | Zweck | Besonderheit |
 |---|---|---|
-| `dev` | lokal via `wrangler dev` | Miniflare-D1, GSC-Calls gegen echten Testaccount |
-| `staging` | Vorabprüfung, Directory-Review | eigenes GCP-OAuth-Projekt, Stripe-Testmodus, Demo-Daten |
-| `production` | Live | EU-Datenresidenz, Stripe-Livemodus |
+| `dev` | lokal | Docker Compose, PostgreSQL im Container, GSC-Calls gegen echten Testaccount, kein Cloudflare |
+| `staging` | Vorabprüfung, Directory-Review | zweite Compose-Instanz auf demselben Server, eigene Datenbank, eigenes GCP-OAuth-Projekt, Stripe-Testmodus |
+| `production` | Live | eigene Domain, Cloudflare proxied plus direkter Zweitname, Stripe-Livemodus |
 
-Das Staging-System ist keine Kür: Für die Directory-Einreichung wird ein Testzugang mit realistischen Beispieldaten verlangt, den ein Reviewer ohne Vorkenntnisse in zehn Minuten bedienen kann.
+Dass `dev` ohne Cloudflare läuft, ist bequem und zugleich eine Falle: Die Timeout- und Puffer-Eigenschaften des Proxys treten dort nie auf. Der SSE-Keepalive und das Rückgabeverhalten langer Operationen gehören deshalb **auf `staging` hinter dem echten Proxy** geprüft, nicht nur lokal.
+
+Staging auf demselben Server zu fahren ist eine bewusste Sparmaßnahme und für diese Größenordnung vertretbar. Es ist keine Kür: Für die Directory-Einreichung wird ein Testzugang mit realistischen Beispieldaten verlangt, den ein Prüfer ohne Vorkenntnisse in zehn Minuten bedienen kann.

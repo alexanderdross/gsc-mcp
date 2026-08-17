@@ -10,13 +10,13 @@ Es gibt zwei OAuth-Ebenen, die konsequent getrennt bleiben. Ihre Vermischung wä
      │                        │    (wir sind Client)       │
      │                        │                            │
      │◀── unser Access-Token ─│◀── Google-Refresh-Token ───│
-          (nur für uns gültig)     (verschlüsselt in D1,
+          (nur für uns gültig)     (verschlüsselt in PostgreSQL,
                                     verlässt den Server nie)
 ```
 
 ## Ebene 1 — Claude ↔ unser Server
 
-Unser Worker ist selbst Authorization Server. Claude kennt keine API-Keys; ein Remote-Connector wird durch Angabe der Server-URL hinzugefügt, alles Weitere handeln die Protokolle aus.
+Unser Server ist zugleich Authorization Server. Claude kennt keine API-Keys; ein Remote-Connector wird durch Angabe der Server-URL hinzugefügt, alles Weitere handeln die Protokolle aus.
 
 **Bereitzustellende Endpunkte**
 
@@ -31,9 +31,9 @@ Unser Worker ist selbst Authorization Server. Claude kennt keine API-Keys; ein R
 
 **Anforderungen:** OAuth 2.1 mit PKCE (S256), Dynamic Client Registration, Resource Indicators (RFC 8707) — damit ein für uns ausgestelltes Token nicht bei einem anderen Server verwendet werden kann. Redirect-Ziel im Claude-Client ist `https://claude.ai/api/mcp/auth_callback`; es wird nicht fest verdrahtet, sondern kommt aus der Client-Registrierung und wird gegen eine Allowlist geprüft.
 
-**Umsetzung:** `@cloudflare/workers-oauth-provider` deckt Registrierung, Autorisierungscodes, Token-Ausgabe und -Rotation ab und legt den Zustand in KV. Der eigene Code beschränkt sich auf den Zustimmungsschritt und die Verknüpfung mit der Google-Identität.
+**Umsetzung:** `node-oidc-provider` deckt Registrierung, Autorisierungscodes, Token-Ausgabe und -Rotation ab und legt den Zustand in PostgreSQL. Der eigene Code beschränkt sich auf den Zustimmungsschritt und die Verknüpfung mit der Google-Identität.
 
-**Token-Design:** Kurzlebige Access-Tokens (eine Stunde) mit Refresh-Token-Rotation. Das Token trägt `user_id` und Scope, aber niemals Google-Credentials. Widerruf ist serverseitig sofort wirksam, weil jeder Request den Grant in KV prüft.
+**Token-Design:** Kurzlebige Access-Tokens (eine Stunde) mit Refresh-Token-Rotation. Das Token trägt `user_id` und Scope, aber niemals Google-Credentials. Widerruf ist serverseitig sofort wirksam, weil jeder Request den Grant in der Datenbank prüft.
 
 ## Ebene 2 — unser Server ↔ Google
 
@@ -53,10 +53,10 @@ Der Schreib-Scope ist bewusst getrennt. Die überwiegende Mehrheit der Nutzer br
 
 **Token-Handling**
 
-- Der **Refresh-Token** wird AES-GCM-verschlüsselt in `google_credentials.refresh_token_enc` gespeichert. Der Schlüssel liegt in Workers Secrets, nicht im Code und nicht in D1. Verschlüsselt wird über WebCrypto mit zufälligem IV je Datensatz; das Feld enthält Version, IV und Chiffrat.
-- Der **Access-Token** wird bei Bedarf erneuert und in KV zwischengespeichert, mit einer TTL etwas unterhalb der Gültigkeit. Das vermeidet einen Google-Roundtrip pro Tool-Call.
+- Der **Refresh-Token** wird AES-GCM-verschlüsselt in `google_credentials.refresh_token_enc` gespeichert. Der Schlüssel wird als Datei eingehängt (systemd-Credential), nicht im Code und nicht in der Datenbank. Zufälliger IV je Datensatz; das `bytea`-Feld enthält IV, Chiffrat und Auth-Tag, die Schlüsselversion steht daneben.
+- Der **Access-Token** wird bei Bedarf erneuert und in einem prozesslokalen LRU-Cache gehalten, mit einer Gültigkeit etwas unterhalb der Token-Laufzeit. Das vermeidet einen Google-Roundtrip pro Tool-Call.
 - **Beides verlässt den Server niemals.** Claude bekommt ausschließlich unser eigenes Token. Ein kompromittierter Client kann damit nur unsere API ansprechen — nicht das Google-Konto des Nutzers.
-- Bei `invalid_grant` (Nutzer hat den Zugriff bei Google widerrufen) wird die Property auf `sync_enabled = 0` gesetzt, der Nutzer benachrichtigt, und betroffene Tools liefern eine klare Handlungsaufforderung zur Neuverbindung statt eines technischen Fehlers.
+- Bei `invalid_grant` (Nutzer hat den Zugriff bei Google widerrufen) wird die Property auf `sync_enabled = false` gesetzt, der Nutzer benachrichtigt, und betroffene Tools liefern eine klare Handlungsaufforderung zur Neuverbindung statt eines technischen Fehlers.
 
 ## Google-OAuth-Verifizierung — der kritische Pfad
 
@@ -79,7 +79,7 @@ Bis zur Freigabe ist der Betrieb im Testmodus mit bis zu 100 explizit eingetrage
 ## Verbindungsablauf aus Nutzersicht
 
 ```
-1. Nutzer fügt in Claude einen Connector hinzu: https://mcp.<domain>/mcp
+1. Nutzer fügt in Claude einen Connector hinzu: https://api.gsc2mcp.com/mcp
 2. Claude entdeckt Protected Resource Metadata → registriert sich per DCR
 3. Claude öffnet /authorize; unser Server erkennt: kein Google-Konto verknüpft
 4. Weiterleitung zur Google-Zustimmung (openid, email, webmasters.readonly)
