@@ -64,7 +64,7 @@ Nach der Marktanalyse ist das mittlere Segment das wirtschaftlich wichtigste ([0
 
 Das Produkt an echten Daten vorführen. Eine tatsächliche Analyse eines tatsächlichen Traffic-Einbruchs, mit Zahlen und der Zerlegung in Nachfrage-, Ranking- und Snippet-Anteil. Das lässt sich nicht behaupten, nur zeigen.
 
-Die zweitwirksamste Demonstration ist bereits gemessen und kostet nichts: **Bei `sc-domain:aip.aero` entfallen auf die 100 klickstärksten Suchanfragen 8,3 % der Klicks.** Diese eine Zahl erklärt in einem Satz, warum ein Werkzeug mit Zeilendeckel nicht reicht — und sie ist an jeder fremden Property reproduzierbar, was sie zu einem guten Aufhänger für einen Fachbeitrag macht.
+Die zweitwirksamste Demonstration ist bereits gemessen und kostet nichts: **Bei `sc-domain:aip.aero` entfallen auf die 100 klickstärksten Suchanfragen 8,3 % der Klicks — die übrigen 91,7 % liegen darunter.** Diese eine Zahl erklärt in einem Satz, warum ein Werkzeug mit Zeilendeckel nicht reicht — und sie ist an jeder fremden Property reproduzierbar, was sie zu einem guten Aufhänger für einen Fachbeitrag macht.
 
 ## Startreihenfolge
 

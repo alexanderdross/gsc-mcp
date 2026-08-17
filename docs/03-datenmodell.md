@@ -160,6 +160,23 @@ CREATE TABLE core.sync_jobs (
 CREATE INDEX ON core.sync_jobs (status, priority, created_at);
 CREATE INDEX ON core.sync_jobs (property_id, status);
 
+-- Bulk Data Export je Property: liegt im BigQuery-Projekt des Kunden,
+-- wir lesen mit unserem Dienstkonto ([12-wettbewerb-usp.md]).
+CREATE TABLE core.bq_exports (
+  property_id     bigint      PRIMARY KEY REFERENCES core.properties(id) ON DELETE CASCADE,
+  gcp_project     text        NOT NULL,
+  dataset         text        NOT NULL,
+  location        text        NOT NULL,          -- 'EU', 'US', … — vom Kunden gewählt
+  verified_at     timestamptz,                   -- letzte erfolgreiche Leseprüfung
+  last_data_date  date,                          -- jüngste eingelesene Tagespartition
+  last_ingest_at  timestamptz,
+  bytes_scanned   bigint      NOT NULL DEFAULT 0,-- kumuliert, für Kostenkontrolle
+  status          text        NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','active','degraded','revoked')),
+  last_error      text
+);
+CREATE INDEX ON core.bq_exports (status) WHERE status <> 'active';
+
 -- Token-Bucket. Ersetzt das Durable Object der Cloudflare-Fassung.
 -- scope 'project' schützt die geteilte Google-Quote, 'property' die Site-Quote.
 CREATE TABLE core.rate_budget (

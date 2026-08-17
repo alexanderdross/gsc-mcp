@@ -28,6 +28,7 @@ Gesamt bis zum kommerziellen Start: rund **elf Wochen Arbeitszeit**. Die tatsäc
 - **Quotenerhöhung beantragen**, mit der Bedarfsrechnung aus [04-sync-pipeline.md](04-sync-pipeline.md)
 - netcup RS bestellen, Debian aufsetzen, härten; Docker, PostgreSQL, Caddy
 - Cloudflare-Zone einrichten: Full (strict), Origin-Zertifikat, Authenticated Origin Pulls, Ratenbegrenzung auf `/register` und `/token`, kein Caching auf `/mcp`
+- **Dienstkonto für BigQuery-Lesezugriff** anlegen; `roles/bigquery.jobUser` im eigenen Projekt, damit Abfragen dort abgerechnet werden
 - Offsite-Objektspeicher (EU) für Backups
 - Monorepo-Gerüst, TypeScript, Vitest, CI
 - Stripe-Konto im Testmodus
@@ -54,13 +55,14 @@ Die Domain steht ganz oben, weil die Google-Verifizierung sie voraussetzt: Die D
 
 Die längste Phase, weil sie zwei Datenwege baut. Der zweite ist der USP.
 
-**Vorab zu entscheiden:** Wohin liefert der Bulk Data Export — in das BigQuery-Projekt des Kunden oder in unseres? Die Abwägung steht in [12-wettbewerb-usp.md](12-wettbewerb-usp.md); sie berührt Datenmodell und Onboarding und muss **vor** Beginn dieser Phase geklärt sein.
+**Entschieden:** Der Bulk Data Export liegt im BigQuery-Projekt des Kunden; wir lesen mit einem Dienstkonto, dem der Kunde `bigquery.dataViewer` auf dem Dataset erteilt. Kein zusätzlicher OAuth-Scope, Speicher beim Kunden (meist im Freikontingent), Scan-Kosten bei uns. Begründung und Einrichtungsweg in [12-wettbewerb-usp.md](12-wettbewerb-usp.md).
 
 - PostgreSQL-Schema und Migrationen, Partitionsverwaltung
 - Sync-Worker: pg-boss, Job-Planer, Cursor-Persistenz, systemd-Timer
 - Rate-Limiter über `core.rate_budget` mit den drei Ebenen
 - **Weg A — API-Backfill:** 16 Monate rückwärts in Nutzwert-Reihenfolge, `COPY` in Staging plus Upsert
-- **Weg B — Bulk Data Export:** Einrichtung anleiten, täglich aus BigQuery nach PostgreSQL spiegeln. Vollständige Daten, keine API-Quote, kein Delta-Sync mehr nötig
+- **Weg B — Bulk Data Export:** Einrichtung anleiten und prüfen, täglich eine Tagespartition aus BigQuery nach PostgreSQL spiegeln — **stets mit `data_date`-Filter**, sonst scannt jede Abfrage die ganze Tabelle auf unsere Rechnung
+- Zustandsüberwachung `core.bq_exports`: bleiben Partitionen aus, Rückfall auf den API-Sync und Benachrichtigung
 - Wörterbücher, Sammelposten für anonymisierte Anfragen, Monats-Rollups
 - Warehouse-Fallback-Logik in allen Performance-Handlern, `source`-Kennzeichnung
 - `get_sync_status`, Integritätstest `SUM(fact_query) = fact_totals`

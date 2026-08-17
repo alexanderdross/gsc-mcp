@@ -116,15 +116,55 @@ Das ist kein Positionierungstext, sondern ein technischer Umbau. Er löst zuglei
 
 Damit trennt das eigentliche Unterscheidungsmerkmal die Pläne, nicht ein künstlicher Zeilendeckel.
 
-## Offene Entscheidung
+## Entschieden: Der Export bleibt beim Kunden
 
-Wo landet der Bulk Export? Zwei Wege, beide gangbar, mit unterschiedlichen Folgen:
+**Der Bulk Data Export liefert in das BigQuery-Projekt des Kunden. Wir lesen von dort.**
 
-**A — In das BigQuery-Projekt des Kunden.** Wir lesen von dort. Die Daten bleiben beim Kunden, wir tragen keine BigQuery-Kosten. Dafür braucht jeder Kunde ein Google-Cloud-Projekt mit Abrechnung — spürbare Hürde, und für Agenturen je Kundenproperty erneut.
+Die Alternative wäre gewesen, den Export in unser eigenes Projekt zu leiten — weniger Reibung im Onboarding, aber die Daten flössen durch einen US-Anbieter unter unserer Verantwortung, was Aussage 4 des USP untergräbt. Der gewählte Weg dreht das um: **Der Kunde wählt die Region seines Datasets selbst und kann EU wählen.** Damit stärkt die Entscheidung das Datenschutzargument, statt es zu verwässern.
 
-**B — In unser BigQuery-Projekt.** Der Kunde erteilt in der Search Console nur die Freigabe. Deutlich weniger Reibung, wir spiegeln täglich nach PostgreSQL und löschen in BigQuery. Dafür tragen wir die Kosten und die Datenschutzverantwortung — und die Daten fließen durch einen US-Anbieter, was mit Aussage 4 des USP in Spannung steht.
+### Kostenverteilung
 
-Variante B ist die bessere Konversion, Variante A die bessere Datenschutzgeschichte. Ein Mittelweg — B als Standard, A für Kunden mit strenger Beschaffung — ist wahrscheinlich richtig, verdoppelt aber den Einrichtungspfad. **Diese Entscheidung gehört vor Phase 2 getroffen**, weil sie Datenmodell und Onboarding berührt.
+Zwei bestätigte Eigenschaften von BigQuery machen den Weg tragfähig:
+
+| Posten | Wer zahlt | Größenordnung |
+|---|---|---|
+| Speicher des Exports | **Kunde** | ~2 GB je Property und Jahr; die ersten 10 GB sind dauerhaft frei |
+| Gescannte Bytes beim Auslesen | **wir** | Abfragekosten trägt das Projekt, das den Job ausführt — nicht das, in dem die Daten liegen |
+| Der Export selbst | niemand | Search Console berechnet dafür nichts |
+
+Für die meisten Kunden ist der Speicher damit **kostenlos** — eine Property braucht Jahre, um das Freikontingent von 10 GB zu füllen. Auf unserer Seite bleibt der tägliche Auszug bei einem Partitionsfilter auf ein einzelnes Datum im Bereich weniger Megabyte; das monatliche Freikontingent von 1 TiB deckt sehr viele Properties ab.
+
+**Die Abfragen müssen partitionsgefiltert sein.** Google hat eigens einen Beitrag über BigQuery-Effizienz bei Search-Console-Exporten veröffentlicht, weil naive Abfragen die vollständige Tabelle scannen. Ein Auszug ohne `WHERE data_date = …` kostet bei einer gewachsenen Property das Hundertfache — und zwar uns.
+
+### Zugriffsmodell
+
+Bewusst **ohne** zusätzlichen OAuth-Scope. `bigquery.readonly` in den Zustimmungsdialog aufzunehmen, hieße einen weiteren Scope in der ohnehin kritischen Google-Verifizierung zu rechtfertigen ([02-auth.md](02-auth.md)). Stattdessen:
+
+Der Kunde erteilt **unserem Dienstkonto** die Rolle `roles/bigquery.dataViewer` auf dem Dataset. Ein Eintrag im BigQuery-Freigabedialog, eine E-Mail-Adresse — kein Schlüsselaustausch, jederzeit vom Kunden widerrufbar, und für uns nur Leserechte auf genau dieses eine Dataset.
+
+Auf unserer Seite braucht das Dienstkonto `roles/bigquery.jobUser` im eigenen Projekt, damit die Abfragen dort abgerechnet werden.
+
+### Der Einrichtungsweg
+
+Fünf Schritte, die der Kunde einmal je Property geht:
+
+1. Google-Cloud-Projekt anlegen oder wählen und **Abrechnung aktivieren**
+2. BigQuery API aktivieren
+3. Googles Export-Dienstkonto die nötigen Rollen im Projekt geben
+4. In der Search Console unter *Einstellungen → Bulk data export* Projekt-ID und **Dataset-Region (EU wählen)** eintragen
+5. Unserem Dienstkonto `bigquery.dataViewer` auf dem Dataset erteilen
+
+**Schritt 1 ist die eigentliche Hürde**, und sie ist nicht wegzuverhandeln: Search Console verlangt ein Projekt mit aktivierter Abrechnung, auch wenn die Nutzung vollständig im Freikontingent bleibt. Wer keine Kreditkarte hinterlegen will, kommt diesen Weg nicht.
+
+Drei Konsequenzen daraus:
+
+- **Der Starter-Plan funktioniert ohne Bulk Export**, rein über die API. Er ist damit nicht nur ein billigerer Plan, sondern der Weg für alle, die den Einrichtungsaufwand nicht gehen wollen.
+- **Ein geführtes MCP-App-Panel** übernimmt die Anleitung — mit Prüfung nach jedem Schritt, statt einer Linkliste. Das ist der beste Anwendungsfall für eine interaktive Oberfläche im ganzen Produkt.
+- **Agenturen richten ein Projekt für alle Kundenproperties ein**, nicht eines je Property. Das reduziert fünf Schritte je Property auf einen — und macht das Segment, das ohnehin das wichtigste ist, zum am leichtesten zu bedienenden.
+
+### Rückfallweg
+
+Bricht der Export ab — Abrechnung abgelaufen, Rechte entzogen, Dataset gelöscht —, erkennt der tägliche Auszug das an ausbleibenden Partitionen. Die Property fällt dann automatisch auf den API-Sync zurück, und der Nutzer wird benachrichtigt. Ein stillschweigend versiegender Datenstrom wäre der schlimmste Fehlerfall, weil er erst Wochen später auffällt und die Lücke dann nicht mehr zu schließen ist.
 
 ## Was zu prüfen bleibt
 

@@ -47,6 +47,8 @@ Innerhalb des `/authorize`-Flows wird der Nutzer zu Google weitergeleitet.
 | `https://www.googleapis.com/auth/webmasters.readonly` | alle Lesezugriffe auf Search Console | immer |
 | `https://www.googleapis.com/auth/webmasters` | Sitemaps einreichen/löschen | **nur opt-in**, separater Zustimmungsschritt |
 
+**BigQuery taucht hier bewusst nicht auf.** Der Zugriff auf den Bulk Data Export des Kunden läuft nicht über einen OAuth-Scope, sondern über eine Dataset-Freigabe an unser Dienstkonto ([12-wettbewerb-usp.md](12-wettbewerb-usp.md)). Das erspart es, `bigquery.readonly` in der ohnehin kritischen Verifizierung mitrechtfertigen zu müssen — und der Kunde kann die Freigabe jederzeit einseitig entziehen.
+
 Der Schreib-Scope ist bewusst getrennt. Die überwiegende Mehrheit der Nutzer braucht ihn nie, und ein reiner Lesezugriff ist sowohl bei der Google-Verifizierung als auch im Verkaufsgespräch mit Sicherheitsabteilungen deutlich leichter zu vertreten.
 
 **Parameter:** `access_type=offline` und `prompt=consent` beim Erstzugriff, damit ein Refresh-Token ausgegeben wird — ohne diese Kombination liefert Google bei wiederholter Autorisierung keines, und der Sync bricht still nach einer Stunde ab.

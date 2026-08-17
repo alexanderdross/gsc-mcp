@@ -74,7 +74,40 @@ Der Worker legt fehlende Vergangenheitspartitionen selbst an, bevor er schreibt 
 
 Zusätzliche Suchtypen (`image`, `video`, `news`, `discover`, `googleNews`) vervielfachen den Aufwand und werden nur synchronisiert, wenn sie überhaupt Daten liefern — ein Probeaufruf über 30 Tage entscheidet das vorab.
 
-## Täglicher Delta-Sync
+## Bulk Data Export — der Hauptweg ab Pro
+
+Ab Pro ist die API nicht mehr die laufende Quelle, sondern nur noch das Mittel für den einmaligen Backfill. Danach übernimmt Googles Bulk Data Export ([12-wettbewerb-usp.md](12-wettbewerb-usp.md)).
+
+**Warum das die Pipeline vereinfacht:** Der Export verbraucht **keine API-Quote**. Der in diesem Kapitel beschriebene Rate-Limiter, die Fair-Share-Logik und der tägliche Delta-Sync über fünf Tage entfallen für diese Properties vollständig. Was bleibt, ist ein täglicher Auszug aus BigQuery.
+
+**Der tägliche Auszug**
+
+```sql
+-- Läuft im UNSEREM Projekt (dort werden die gescannten Bytes abgerechnet),
+-- liest aus dem Dataset des Kunden.
+SELECT data_date, query, url, is_anonymized_query,
+       clicks, impressions, sum_top_position
+  FROM `<kunde>.<dataset>.searchdata_url_impression`
+ WHERE data_date = @day        -- ZWINGEND: Partitionsfilter
+```
+
+**Der Partitionsfilter ist nicht optional.** Ohne ihn scannt jede Abfrage die vollständige Tabelle — bei einer gewachsenen Property das Hundertfache an Bytes, und zwar auf unsere Rechnung. Google hat dazu eigens einen Beitrag über BigQuery-Effizienz bei Search-Console-Exporten veröffentlicht. Ein Test in CI prüft deshalb, dass jede erzeugte Abfrage einen `data_date`-Filter trägt.
+
+**Besonderheiten der Exportdaten**
+
+| Eigenschaft | Folge für uns |
+|---|---|
+| `sum_top_position` ist bereits eine Summe, nullbasiert | Umrechnung auf unsere einsbasierte `position_sum` beim Einlesen |
+| `is_anonymized_query` markiert Zeilen ohne Query-Text | fließen in den Sammelposten `query_id = 0` |
+| Zwei Tabellen: `searchdata_site_impression` und `…url_impression` | erstere speist `fact_totals`, letztere `fact_query_page` und die abgeleiteten Grains |
+| Daten erscheinen mit Verzug und werden nachkorrigiert | die letzten drei Tagespartitionen werden erneut gelesen und geupsertet |
+| Kein Rückwirken auf die Zeit vor Aktivierung | daher der einmalige API-Backfill für die 16 Monate davor |
+
+**Zustandsüberwachung.** `core.bq_exports.last_data_date` hält fest, wie weit der Export reicht. Bleiben Partitionen aus — abgelaufene Abrechnung, entzogene Rechte, gelöschtes Dataset —, wechselt der Status auf `degraded`, die Property fällt automatisch auf den API-Sync zurück und der Nutzer wird benachrichtigt. Ein stillschweigend versiegender Datenstrom wäre der schlimmste Fehlerfall: Er fiele erst Wochen später auf, und die Lücke ließe sich dann nicht mehr schließen, weil die API nur 16 Monate zurückreicht.
+
+`bytes_scanned` wird kumuliert mitgeführt, damit die Kostenseite messbar bleibt und nicht erst auf der Rechnung auffällt.
+
+## Täglicher Delta-Sync (nur ohne Bulk Export)
 
 **Es werden immer die letzten fünf Tage neu geholt, nicht nur der neueste.** Search-Console-Daten erscheinen mit zwei bis drei Tagen Verzug und werden danach noch korrigiert. Wer nur vorwärts anhängt, friert unfertige Zahlen dauerhaft ein und erklärt später Abweichungen gegenüber der Google-Oberfläche, die er selbst verursacht hat.
 
