@@ -1,6 +1,5 @@
-# GSC-MCP — Betrieb auf einem Host ([docs/01]). PostgreSQL + Anwendung.
+# GSC-MCP — Betrieb auf einem Host ([docs/01]). PostgreSQL + Anwendung + Sync-Worker.
 # Caddy terminiert TLS davor (siehe deploy/Caddyfile) und proxyt auf 127.0.0.1:8080.
-# Der Sync-Worker kommt hinzu, sobald der pg-boss-Loop verdrahtet ist.
 
 services:
   db:
@@ -30,6 +29,17 @@ services:
     ports:
       # Nur lokal — Caddy ist die einzige öffentliche Fläche.
       - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["npx", "tsx", "apps/worker/src/main.ts"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://gscmcp:${POSTGRES_PASSWORD}@db:5432/gscmcp
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

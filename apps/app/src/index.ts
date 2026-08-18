@@ -48,6 +48,7 @@ export * from "./oauth/index.ts";
 export * from "./http/index.ts";
 export * from "./runtime/index.ts";
 export * from "./config.ts";
+export * from "./queue-pgboss.ts";
 export * from "./app.ts";
 export { main } from "./main.ts";
 export {
