@@ -19,7 +19,7 @@
 
 > **Umsetzung:** Der Tool-Rahmen steht in `apps/app/src/`: `defineTool`/`AnyTool` (`tool.ts`), das zentrale Zugriffs-Gate (`access.ts`), das Antwortbudget (`budget.ts`), Registry und Router (`registry.ts`, `router.ts`). Berechtigung, Eingabevalidierung und Mandantentrennung laufen zentral im Router, nie im Handler. Implementiert: die Meta-Tools (`tools/meta.ts`); die Performance-Tools `search_performance`, `top_movers` (`tools/performance.ts`) und `compare_periods` (`tools/compare.ts`); sowie die vollständige Analyse-Engine `striking_distance`, `ctr_analysis`, `brand_vs_nonbrand`, `detect_anomalies`, `find_cannibalization`, `content_decay` (`tools/analysis.ts`). Dazu die Indexierungs- und Sitemap-Tools `inspect_url`, `bulk_inspect_urls`, `index_coverage_overview`, `list_sitemaps` und das einzige schreibende `submit_sitemap` (`tools/indexing.ts`, reine Logik in `indexing.ts`). Sie hängen an der injizierbaren `IndexingRepo`-Schnittstelle, die GSC-Client, Inspektions-Cache und Tagesbudget kapselt — ebenfalls ohne Netzwerk/DB getestet (`test/indexing.test.ts`).
 
-Alle datentragenden Tools hängen an injizierbaren Repo-Schnittstellen (`repo.ts` bzw. `IndexingRepo`) — die Handler-Logik ist damit ohne Datenbank getestet; die konkreten Implementierungen gegen `packages/db` und `packages/gsc-client` folgen. Offen bleiben nur noch `get_google_updates`, `export_data` und der MCP-Transport.
+Alle datentragenden Tools hängen an injizierbaren Repo-Schnittstellen (`repo.ts` bzw. `IndexingRepo`) — die Handler-Logik ist damit ohne Datenbank getestet; die konkreten Implementierungen gegen `packages/db` und `packages/gsc-client` folgen. `get_google_updates` (I/O-frei, gepflegter Katalog) und `export_data` (über eine injizierte `ExportStore`-Schnittstelle) sind implementiert. Offen bleiben nur noch die konkreten Repo-Implementierungen und der MCP-Transport.
 
 ---
 
@@ -201,16 +201,16 @@ Aggregiert gespeicherte Inspektionen und Sitemap-Daten zu einem Überblick — m
 
 ### `get_google_updates`
 ```ts
-{ period?, type?: 'core'|'spam'|'discover'|'all' }
+{ from?, to?, type?: 'core'|'spam'|'discover'|'other' }
 ```
-Bestätigte Google-Updates zur Korrelation mit Auffälligkeiten. Wird von `detect_anomalies` intern mitgenutzt.
+Bestätigte Google-Updates zur Korrelation mit Auffälligkeiten. Ohne `type` alle Typen; ohne Zeitraum die letzten zwölf Monate. Geliefert werden Updates, die sich mit `[from, to]` überschneiden, sortiert nach Startdatum. I/O-frei (gepflegter Katalog) und daher ohne Property/Repo verfügbar. Wird von `detect_anomalies` intern mitgenutzt.
 
 ### `export_data`
 ```ts
 { property?, dataset: 'query'|'page'|'query_page'|'totals',
-  period, format?: 'csv'|'parquet' }
+  from, to, format?: 'csv' }
 ```
-Erzeugt eine Datei im Objektspeicher und liefert eine präsignierte URL mit kurzer Gültigkeit. Ab Pro. Der Weg über eine URL statt über die Tool-Antwort ist zwingend — ein CSV mit 100.000 Zeilen im Kontextfenster wäre unbrauchbar und teuer.
+Erzeugt eine Datei im Objektspeicher und liefert eine präsignierte URL mit kurzer Gültigkeit. Ab Starter ([docs/07]). Zunächst CSV; Parquet folgt über den Worker-Exportpfad. Der Weg über eine URL statt über die Tool-Antwort ist zwingend — ein CSV mit 100.000 Zeilen im Kontextfenster wäre unbrauchbar und teuer.
 
 ### `show_pricing`
 Planübersicht mit Upgrade-Link. Wird auch von der Limitbehandlung aufgerufen.

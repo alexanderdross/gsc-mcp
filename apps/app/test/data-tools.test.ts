@@ -51,6 +51,9 @@ function fakeRepo(data: {
     async decayInputs() {
       return { pages: [], siteYoy: 0 };
     },
+    async exportDataset() {
+      return [];
+    },
   };
   return repo;
 }
@@ -215,7 +218,7 @@ describe("top_movers", () => {
 
 describe("Registry", () => {
   it("registriert Datentools nur mit Repo", () => {
-    expect(buildRegistry().size).toBe(2); // nur Meta
-    expect(buildRegistry({ repo: fakeRepo({}) }).size).toBe(11);
+    expect(buildRegistry().size).toBe(3); // Meta + get_google_updates
+    expect(buildRegistry({ repo: fakeRepo({}) }).size).toBe(12);
   });
 });
