@@ -11,13 +11,14 @@ packages/db          ✅  Drizzle-Modelle, kanonische Migration, findClickDrift(
                           WarehouseRepo-Port + Implementierung (gg. echtes PostgreSQL getestet)
 packages/gsc-client  ✅  Client: Pagination, Backoff, Fehlerübersetzung
 apps/app             🧱  Gerüst: tool/access/budget/registry/router + alle Tool-Handler,
-                          IndexingRepository (GSC-Client + DB-Cache + Budget, gg. PostgreSQL getestet)
+                          IndexingRepository (GSC-Client + DB-Cache + Budget, gg. PostgreSQL getestet),
+                          MCP-Transport-Gerüst (mcp/: JSON-RPC, Zod→JSON-Schema, Dispatch, Session, /mcp-JSON-Pfad)
 apps/worker          🧱  Gerüst: rate-limit/planner/bulk-export
 ```
 
 Zwei bewusste Abweichungen vom Zielbild: Die Tool-Definitionen liegen vorerst in `apps/app/src/tools/` statt in einem eigenen `packages/mcp-tools` — solange es wenige sind, ist das näher am Router und einfacher. `packages/billing` und `apps/web` existieren noch nicht (Phase 5). Wächst die Tool-Zahl, wird `mcp-tools` herausgezogen; das ist ein reiner Verschiebeschritt.
 
-Offen ist alles Netzwerkseitige: `apps/app/src/oauth`, `.../mcp/transport.ts`, die laufende Verdrahtung in `apps/worker` sowie `deploy/`.
+Vom MCP-Transport steht der netzunabhängige Kern (`apps/app/src/mcp/`: Protokoll, Sitzungen, JSON-Antwortpfad). Offen bleibt das Netzgebundene: der HTTP-Server samt SSE-Strom mit Keepalive, `apps/app/src/oauth` als Authentifikator, die laufende Verdrahtung in `apps/worker` sowie `deploy/`.
 
 ## Monorepo (Zielbild)
 

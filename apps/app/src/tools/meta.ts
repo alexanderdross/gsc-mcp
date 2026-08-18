@@ -1,8 +1,7 @@
 /**
  * Meta-Tools ([docs/05]). Reine Handler ohne Datenbank- oder Netzwerkzugriff —
- * sie beweisen das Gerüst und sind vollständig testbar. Die datentragenden Tools
- * (search_performance, Analyse-Engine, Indexierung) folgen, sobald der MCP-Transport
- * und die Google-Anbindung stehen.
+ * sie beweisen das Gerüst und sind vollständig testbar. `get_capabilities` meldet das
+ * maßgebliche Tool-Inventar samt Plan-Verfügbarkeit.
  */
 
 import { z } from "zod";
