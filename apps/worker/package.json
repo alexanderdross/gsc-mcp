@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "dependencies": {
+    "@gsc/db": "*"
+  },
   "scripts": {
     "typecheck": "tsc --build"
   }
