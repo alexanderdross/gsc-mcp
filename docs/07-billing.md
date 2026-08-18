@@ -67,7 +67,7 @@ Der Free-Plan läuft deshalb als reiner Passthrough. Das ist kein künstlicher R
 
 Das Billing Portal ist eine bewusste Entscheidung: Kündigung, Rechnungsabruf und Zahlungsmittelwechsel selbst zu bauen kostet Wochen und schafft rechtliche Angriffsfläche, während Stripes Variante fertig und geprüft ist.
 
-**Webhooks** unter `https://www.gsc2mcp.com/webhooks/stripe`:
+**Webhooks** unter `https://gsc2mcp.drossmedia.de/webhooks/stripe`:
 
 | Event | Wirkung |
 |---|---|

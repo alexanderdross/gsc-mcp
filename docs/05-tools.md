@@ -271,7 +271,7 @@ Limits sind kein Fehlerfall, sondern ein Gesprächsangebot. Bei Überschreitung 
 ```
 [Free-Plan] Es wurden 30 Tage ausgewertet. Ihr Plan begrenzt die Historie
 auf 30 Tage; mit Starter stehen 16 Monate zur Verfügung, mit Pro die
-vollständige Historie ab Sync-Beginn. → https://www.gsc2mcp.com/pricing
+vollständige Historie ab Sync-Beginn. → https://gsc2mcp.drossmedia.de/pricing
 ```
 
 Dieses Muster nutzt auch der Wettbewerber, inklusive der ausdrücklichen Anweisung an den Agenten, den Hinweis nicht zu paraphrasieren. Es wirkt, weil es an genau der Stelle erscheint, an der der Nutzer den fehlenden Wert gerade konkret vermisst.

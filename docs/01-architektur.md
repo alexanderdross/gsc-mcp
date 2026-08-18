@@ -104,14 +104,30 @@ SSL-Modus **Full (strict)** mit einem Cloudflare-Origin-Zertifikat in Caddy, daz
 
 Die Alternative wäre ein Cloudflare Tunnel — dann entfallen eingehende Ports vollständig. Bewusst nicht gewählt, weil der Tunnel den direkten Zugang unmöglich macht, den der nächste Abschnitt braucht.
 
-### Der unproxied Zweitname
+### Ein Host, pfadgeroutet — statt www/api getrennt
 
-Neben `api.gsc2mcp.com` wird ein zweiter Hostname eingerichtet, dessen DNS-Eintrag **nicht** über Cloudflare läuft und der direkt auf den Server in Nürnberg zeigt. Er löst zwei verschiedene Probleme mit einem Mittel:
+Weil das Produkt als Subdomain der bestehenden Cloudflare-Zone `drossmedia.de` läuft, wird bewusst **nicht** in `www` und `api` aufgeteilt. Der Grund ist konkret: Cloudflares kostenloses Universal-SSL deckt die Zone und *eine* Subdomain-Ebene ab (`*.drossmedia.de`), aber nicht die zweite — `api.gsc2mcp.drossmedia.de` bräuchte den kostenpflichtigen Advanced Certificate Manager. Ein einzelner Host mit Pfad-Routing umgeht das vollständig:
+
+```
+gsc2mcp.drossmedia.de/            → web (Landing, Dashboard, Docs)
+gsc2mcp.drossmedia.de/mcp         → MCP-Endpunkt (der Connector-URL)
+gsc2mcp.drossmedia.de/.well-known/oauth-*   → AS-Metadata
+gsc2mcp.drossmedia.de/register|/authorize|/token   → OAuth
+gsc2mcp.drossmedia.de/webhooks/stripe
+```
+
+Das ist nicht nur billiger, sondern auch einfacher: ein Zertifikat, eine Zone, ein DNS-Eintrag. Caddy verteilt intern auf die Prozesse `app` und `web`.
+
+### Der unproxied Direkthost
+
+Daneben **`gsc2mcp-direct.drossmedia.de`** — erste Subdomain-Ebene, also vom Wildcard gedeckt, aber als DNS-Eintrag auf „DNS only" (graue Wolke) gestellt: Er zeigt direkt auf den Server in Nürnberg, an Cloudflare vorbei. Caddy stellt für ihn ein eigenes Let's-Encrypt-Zertifikat aus. Er löst zwei Probleme mit einem Mittel:
 
 - **Datenschutz.** Cloudflare terminiert TLS und verarbeitet damit personenbezogene Daten. Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, bekommen den direkten Weg. Siehe [08-security-dsgvo.md](08-security-dsgvo.md).
-- **Ausfall.** Ein Cloudflare-Ausfall legt den Connector lahm, obwohl der Server läuft. Der Zweitname ist der dokumentierte Notweg.
+- **Ausfall.** Ein Cloudflare-Ausfall legt den proxied Host lahm, obwohl der Server läuft. Der Direkthost ist der dokumentierte Notweg.
 
 Er kostet fast nichts: derselbe Caddy, ein zusätzliches Let's-Encrypt-Zertifikat, ein A-Record ohne Proxy.
+
+> **Bewusste Abweichung:** Das Produkt bleibt auch kommerziell auf der Subdomain, statt auf eine eigene Domain zu wechseln. Das spart Registrierung und nutzt die bestehende Zone, hat aber zwei benannte Kosten: Der OAuth-Zustimmungsdialog zeigt `drossmedia.de` statt einer Produktmarke, und ein späterer Umzug auf eine eigene Domain würde eine **erneute Google-Verifizierung** auslösen — mehrere Wochen kritischer Pfad ein zweites Mal ([09-roadmap.md](09-roadmap.md)). Die Entscheidung ist getroffen; der Trade-off ist hier festgehalten, damit er nicht überrascht.
 
 ### Was der Proxy tatsächlich bringt
 

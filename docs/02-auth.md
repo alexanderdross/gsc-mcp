@@ -81,7 +81,7 @@ Bis zur Freigabe ist der Betrieb im Testmodus mit bis zu 100 explizit eingetrage
 ## Verbindungsablauf aus Nutzersicht
 
 ```
-1. Nutzer fügt in Claude einen Connector hinzu: https://api.gsc2mcp.com/mcp
+1. Nutzer fügt in Claude einen Connector hinzu: https://gsc2mcp.drossmedia.de/mcp
 2. Claude entdeckt Protected Resource Metadata → registriert sich per DCR
 3. Claude öffnet /authorize; unser Server erkennt: kein Google-Konto verknüpft
 4. Weiterleitung zur Google-Zustimmung (openid, email, webmasters.readonly)
