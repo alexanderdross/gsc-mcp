@@ -116,6 +116,62 @@ export const bqExports = core.table("bq_exports", {
   lastError: text("last_error"),
 });
 
+/* ── OAuth-Zustand ([docs/02]) ─────────────────────────────────────────────── */
+
+export const oauthClients = core.table("oauth_clients", {
+  clientId: text("client_id").primaryKey(),
+  clientSecret: text("client_secret"),
+  redirectUris: text("redirect_uris").array().notNull(),
+  tokenEndpointAuthMethod: text("token_endpoint_auth_method").notNull().default("none"),
+  grantTypes: text("grant_types").array().notNull(),
+  responseTypes: text("response_types").array().notNull(),
+  scope: text("scope"),
+  clientName: text("client_name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const oauthPending = core.table("oauth_pending", {
+  state: text("state").primaryKey(),
+  clientId: text("client_id").notNull(),
+  redirectUri: text("redirect_uri").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  codeChallengeMethod: text("code_challenge_method").notNull(),
+  scope: text("scope").notNull(),
+  audience: text("audience"),
+  clientState: text("client_state"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const oauthAuthCodes = core.table("oauth_auth_codes", {
+  code: text("code").primaryKey(),
+  clientId: text("client_id").notNull(),
+  redirectUri: text("redirect_uri").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  codeChallengeMethod: text("code_challenge_method").notNull(),
+  scope: text("scope").notNull(),
+  audience: text("audience"),
+  userId: bigint("user_id", { mode: "number" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const oauthAccessTokens = core.table("oauth_access_tokens", {
+  token: text("token").primaryKey(),
+  userId: bigint("user_id", { mode: "number" }).notNull(),
+  scope: text("scope").notNull(),
+  audience: text("audience"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+export const oauthRefreshTokens = core.table("oauth_refresh_tokens", {
+  token: text("token").primaryKey(),
+  userId: bigint("user_id", { mode: "number" }).notNull(),
+  clientId: text("client_id").notNull(),
+  scope: text("scope").notNull(),
+  audience: text("audience"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /* ── Warehouse: Wörterbücher ───────────────────────────────────────────────── */
 
 export const dimQuery = wh.table("dim_query", {
