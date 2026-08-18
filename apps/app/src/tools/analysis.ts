@@ -2,7 +2,7 @@
  * Analyse-Tool-Handler ([docs/05], [docs/06]) — wickeln die reinen Verfahren aus
  * `packages/analytics` über das injizierte Warehouse-Repository ein. Die Handler-Logik
  * (Kurvenschätzung, Budget, Zugriffsstufe) ist ohne Datenbank testbar; die konkrete
- * Repo-Implementierung gegen `packages/db` folgt.
+ * Repo-Implementierung (`WarehouseRepository`) liegt in `packages/db`.
  */
 
 import { z } from "zod";

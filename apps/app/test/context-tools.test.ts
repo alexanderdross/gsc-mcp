@@ -11,7 +11,7 @@ import {
   type ExportStore,
   type ExportDataset,
   type Period,
-  type CsvRecord,
+  type ExportRow,
 } from "../src/index.ts";
 
 function fact(clicks: number, impressions: number, position: number): Fact {
@@ -19,7 +19,7 @@ function fact(clicks: number, impressions: number, position: number): Fact {
 }
 
 /** Fake-Repo, das einen festen Datensatz für den Export zurückgibt. */
-function fakeRepo(rows: readonly CsvRecord[]): WarehouseRepo & { lastExport?: { dataset: ExportDataset; period: Period } } {
+function fakeRepo(rows: readonly ExportRow[]): WarehouseRepo & { lastExport?: { dataset: ExportDataset; period: Period } } {
   const repo: WarehouseRepo & { lastExport?: { dataset: ExportDataset; period: Period } } = {
     async performance(q) {
       return { rows: [], totals: fact(0, 0, 0), anonymizedImpressions: 0, source: "warehouse", covered: q.period };
@@ -119,7 +119,7 @@ describe("toCsv", () => {
 });
 
 describe("export_data", () => {
-  const rows: CsvRecord[] = [
+  const rows: ExportRow[] = [
     { query: "aip", clicks: 98, impressions: 20898 },
     { query: "aip germany", clicks: 109, impressions: 729 },
   ];

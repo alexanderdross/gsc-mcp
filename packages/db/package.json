@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@gsc/core": "*",
+    "@gsc/analytics": "*",
     "drizzle-orm": "^0.36.4",
     "pg": "^8.13.1"
   },
