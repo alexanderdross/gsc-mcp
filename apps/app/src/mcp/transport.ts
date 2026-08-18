@@ -19,6 +19,19 @@ import type { Session } from "../router.ts";
 import type { McpServer } from "./dispatch.ts";
 import type { SessionStore } from "./session.ts";
 import { asRequest, failure, RPC_ERROR, type JsonRpcResponse } from "./jsonrpc.ts";
+import { withRequestContext } from "../runtime/context.ts";
+
+/** Führt eine Nachricht mit gesetztem Request-Kontext aus (für die per-Nutzer-Token-Auflösung). */
+function receiveInContext(
+  server: McpServer,
+  rpc: Parameters<McpServer["receive"]>[0],
+  session: Session,
+): Promise<JsonRpcResponse | null> {
+  return withRequestContext(
+    { userId: session.userId, plan: session.plan, ...(session.propertyId === undefined ? {} : { propertyId: session.propertyId }) },
+    () => server.receive(rpc, session),
+  );
+}
 
 const SESSION_HEADER = "mcp-session-id";
 
@@ -72,7 +85,7 @@ export class McpEndpoint {
       const session = await this.#authenticate(h);
       if (!session) return json(401, failure(id, RPC_ERROR.InvalidRequest, "Nicht authentifiziert."));
       const mcp = await this.#store.create(session);
-      const response = await this.#server.receive(rpc, session);
+      const response = await receiveInContext(this.#server, rpc, session);
       return json(200, response, mcp.id);
     }
 
@@ -88,7 +101,7 @@ export class McpEndpoint {
       await this.#store.markInitialized(sessionId);
     }
 
-    const response = await this.#server.receive(rpc, mcp.session);
+    const response = await receiveInContext(this.#server, rpc, mcp.session);
     // Notification: keine Antwort, aber angenommen.
     if (response === null) return { status: 202, headers: NO_STORE, body: "" };
     return json(200, response);
