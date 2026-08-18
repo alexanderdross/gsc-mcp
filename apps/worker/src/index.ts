@@ -13,3 +13,4 @@ export * from "./rate-limit.ts";
 export * from "./planner.ts";
 export * from "./bulk-export.ts";
 export * from "./ingest.ts";
+export * from "./sync.ts";
