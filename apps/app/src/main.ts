@@ -3,18 +3,19 @@
  * Datenbank, verdrahtet die Anwendung (`buildApp`) und startet den HTTP-Server. Bewusst
  * dünn — die gesamte Logik liegt testbar in `buildApp` und den Bausteinen darunter.
  *
- * Die Massen-Inspektions-Queue ist hier noch ein No-op; der pg-boss-Adapter tritt an
- * ihre Stelle, sobald der Worker läuft. Der SSE-Strom (`startSseStream`) steht bereit;
- * der Anfrage-Antwort-Verkehr läuft über den JSON-Pfad.
+ * Massen-Inspektionen laufen über pg-boss; der Sync-Worker (`apps/worker`) konsumiert
+ * sie. Der SSE-Strom (`startSseStream`) steht bereit; der Anfrage-Antwort-Verkehr läuft
+ * über den JSON-Pfad.
  */
 
 import { pathToFileURL } from "node:url";
+import PgBoss from "pg-boss";
 import { createDb } from "@gsc/db";
 import { loadConfig } from "./config.ts";
 import { buildApp } from "./app.ts";
 import { GoogleOAuth } from "./oauth/index.ts";
 import { createHttpServer } from "./http/index.ts";
-import type { InspectionQueue } from "./indexing-repo.ts";
+import { PgBossInspectionQueue } from "./queue-pgboss.ts";
 
 export async function main(env: Record<string, string | undefined> = process.env): Promise<void> {
   const config = loadConfig(env);
@@ -24,8 +25,10 @@ export async function main(env: Record<string, string | undefined> = process.env
     clientSecret: config.google.clientSecret,
     redirectUri: config.google.redirectUri,
   });
-  // Platzhalter, bis der pg-boss-Adapter verdrahtet ist.
-  const queue: InspectionQueue = { async enqueue() {} };
+  // Massen-Inspektionen laufen über pg-boss; der Worker konsumiert sie.
+  const boss = new PgBoss(config.databaseUrl);
+  await boss.start();
+  const queue = new PgBossInspectionQueue(boss);
 
   const app = buildApp({ db, google, config, queue });
   const server = createHttpServer(app.router);

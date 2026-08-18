@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "node scripts/migrate.mjs",
-    "start": "tsx apps/app/src/main.ts"
+    "start": "tsx apps/app/src/main.ts",
+    "start:worker": "tsx apps/worker/src/main.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

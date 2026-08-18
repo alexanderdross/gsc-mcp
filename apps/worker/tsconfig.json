@@ -5,5 +5,9 @@
     "outDir": "dist"
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../../packages/db" }]
+  "references": [
+    { "path": "../../packages/db" },
+    { "path": "../../packages/gsc-client" },
+    { "path": "../app" }
+  ]
 }

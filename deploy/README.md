@@ -61,7 +61,11 @@ curl https://gsc2mcp.drossmedia.de/.well-known/oauth-authorization-server
 
 Danach den MCP-Server in Claude als Remote-Connector eintragen (`https://gsc2mcp.drossmedia.de/mcp`) und den OAuth-Fluss durchlaufen. Der SSE-Keepalive und das Verhalten langer Operationen gehören **hinter dem echten Proxy** geprüft, nicht nur lokal ([docs/01](../docs/01-architektur.md)).
 
+## Sync-Worker
+
+Der Worker (`apps/worker`) konsumiert die pg-boss-Queue und führt die Massen-Inspektionen aus. Unter Docker läuft er als eigener `worker`-Dienst (`docker compose up -d` startet ihn mit); ohne Docker über [`gsc-mcp-worker.service`](gsc-mcp-worker.service) bzw. `npm run start:worker`. pg-boss legt sein Schema beim ersten Start selbst an.
+
 ## Noch offen
 
-- **pg-boss-Queue + Sync-Worker** (Backfill/Delta, BigQuery-Bulk-Export) — eigener Dienst, folgt.
+- **Backfill/Delta-Planung und BigQuery-Bulk-Export** im Worker verdrahten (die reinen Bausteine — Planer, Rate-Limiter, Ingest-Aggregation — stehen).
 - **BigQuery-Dienstkonto** je Kunde mit `bigquery.dataViewer` auf dem Export-Dataset (Betreiber/Kunde).

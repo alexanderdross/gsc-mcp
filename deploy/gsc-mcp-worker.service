@@ -1,0 +1,26 @@
+# systemd-Unit für den Sync-Worker ([docs/04]).
+# Konsumiert die pg-boss-Queue (Massen-Inspektion; später Backfill/Delta).
+# Ablage: /etc/systemd/system/gsc-mcp-worker.service
+#   systemctl daemon-reload && systemctl enable --now gsc-mcp-worker
+
+[Unit]
+Description=GSC-MCP Sync-Worker (Inspektions-Queue)
+After=network-online.target postgresql.service gsc-mcp.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gscmcp
+WorkingDirectory=/opt/gsc-mcp
+EnvironmentFile=/opt/gsc-mcp/.env
+ExecStart=/usr/bin/npx tsx apps/worker/src/main.ts
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/gsc-mcp
+
+[Install]
+WantedBy=multi-user.target
