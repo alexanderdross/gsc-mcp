@@ -93,7 +93,7 @@ SELECT data_date, query, url, is_anonymized_query,
 
 **Der Partitionsfilter ist nicht optional.** Ohne ihn scannt jede Abfrage die vollständige Tabelle — bei einer gewachsenen Property das Hundertfache an Bytes, und zwar auf unsere Rechnung. Google hat dazu eigens einen Beitrag über BigQuery-Effizienz bei Search-Console-Exporten veröffentlicht. Ein Test in CI prüft deshalb, dass jede erzeugte Abfrage einen `data_date`-Filter trägt.
 
-**Besonderheiten der Exportdaten**
+**Besonderheiten der Exportdaten** *(Umsetzung: `apps/worker/src/bulk-export.ts` — `toPositionSum`, `pivotAppearance`, `toQueryFact`, mit Tests)*
 
 | Eigenschaft | Folge für uns |
 |---|---|
@@ -133,7 +133,7 @@ Stundenwerte sind ausdrücklich partiell — das Feld `partial` in `wh.fact_hour
 
 ## Rate-Limiting und Fairness
 
-Der Token-Bucket liegt in `core.rate_budget` und wird mit `SELECT … FOR UPDATE` fortgeschrieben — auf einer Instanz genügt das, um Anfragen zu serialisieren. In der Cloudflare-Fassung brauchte es dafür ein Durable Object; hier sind es rund vierzig Zeilen.
+Der Token-Bucket liegt in `core.rate_budget` und wird mit `SELECT … FOR UPDATE` fortgeschrieben — auf einer Instanz genügt das, um Anfragen zu serialisieren. In der Cloudflare-Fassung brauchte es dafür ein Durable Object; hier sind es rund vierzig Zeilen. *(Umsetzung: die reine Bucket-Rechenlogik samt adaptiver Ratenanpassung steht in `apps/worker/src/rate-limit.ts`; die Job-Planung in `planner.ts`.)*
 
 Drei Ebenen:
 

@@ -56,7 +56,7 @@ Der Schreib-Scope ist bewusst getrennt. Die überwiegende Mehrheit der Nutzer br
 **Token-Handling**
 
 - Der **Refresh-Token** wird AES-GCM-verschlüsselt in `google_credentials.refresh_token_enc` gespeichert. Der Schlüssel wird als Datei eingehängt (systemd-Credential), nicht im Code und nicht in der Datenbank. Zufälliger IV je Datensatz; das `bytea`-Feld enthält IV, Chiffrat und Auth-Tag, die Schlüsselversion steht daneben.
-- Der **Access-Token** wird bei Bedarf erneuert und in einem prozesslokalen LRU-Cache gehalten, mit einer Gültigkeit etwas unterhalb der Token-Laufzeit. Das vermeidet einen Google-Roundtrip pro Tool-Call.
+- Der **Access-Token** wird bei Bedarf erneuert und in einem prozesslokalen LRU-Cache gehalten, mit einer Gültigkeit etwas unterhalb der Token-Laufzeit. Das vermeidet einen Google-Roundtrip pro Tool-Call. Der `tokenProvider` ist die eine Stelle, an der der Client (`packages/gsc-client`) diesen Token bezieht — er ist injizierbar, weshalb der Client ohne echte Google-Anbindung testbar bleibt.
 - **Beides verlässt den Server niemals.** Claude bekommt ausschließlich unser eigenes Token. Ein kompromittierter Client kann damit nur unsere API ansprechen — nicht das Google-Konto des Nutzers.
 - Bei `invalid_grant` (Nutzer hat den Zugriff bei Google widerrufen) wird die Property auf `sync_enabled = false` gesetzt, der Nutzer benachrichtigt, und betroffene Tools liefern eine klare Handlungsaufforderung zur Neuverbindung statt eines technischen Fehlers.
 

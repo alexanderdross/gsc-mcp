@@ -17,6 +17,8 @@
 
 **Annotationen sind Pflicht.** Jedes Tool trägt `title` und den passenden `readOnlyHint` bzw. `destructiveHint`. Das ist zugleich Voraussetzung für die Listung im Claude Connector Directory ([11-go-to-market.md](11-go-to-market.md)) — fehlende Annotationen sind dort ein häufiger Ablehnungsgrund.
 
+> **Umsetzung:** Der Tool-Rahmen steht in `apps/app/src/`: `defineTool`/`AnyTool` (`tool.ts`), das zentrale Zugriffs-Gate (`access.ts`), das Antwortbudget (`budget.ts`), Registry und Router (`registry.ts`, `router.ts`). Berechtigung, Eingabevalidierung und Mandantentrennung laufen zentral im Router, nie im Handler. Implementiert sind bislang die Meta-Tools (`tools/meta.ts`: `show_pricing`, `get_capabilities`); die datentragenden Tools folgen als reine Handler gegen `packages/db` und `packages/analytics`.
+
 ---
 
 ## Übersicht

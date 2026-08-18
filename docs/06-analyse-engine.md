@@ -4,6 +4,8 @@ Alle hier beschriebenen Berechnungen laufen deterministisch in SQL und TypeScrip
 
 **Grundlagen.** Die Durchschnittsposition wird stets als `position_sum / impressions` berechnet, nie als Mittelwert von Mittelwerten. Die CTR ist immer `clicks / impressions` und wird nie gespeichert. Beides folgt aus dem Speicherformat in [03-datenmodell.md](03-datenmodell.md).
 
+> **Umsetzung:** Change-Attribution und CTR-Kurve sind in `packages/analytics/src/` implementiert (`attribution.ts`, `ctr-curve.ts`) und durch Eigenschaftstests abgesichert — u. a. dass sich die Zerlegung exakt zu Δclicks summiert. Die übrigen Verfahren dieses Dokuments folgen dem gleichen Muster als reine Funktionen.
+
 ---
 
 ## 1. Change-Attribution

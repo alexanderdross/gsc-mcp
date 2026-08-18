@@ -64,7 +64,7 @@ Ein Restrisiko bleibt und soll benannt sein: Auf einem selbst betriebenen Server
 
 Die Prüfung, ob eine `property_id` dem anfragenden Nutzer gehört, erfolgt **zentral im Tool-Router**, nicht in den einzelnen Handlern. Ein vergessener Filter in einem von 26 Handlern darf keinen Datenabfluss zwischen Kunden verursachen können.
 
-Abgesichert durch einen Test, der über die Tool-Registry iteriert, für jeden registrierten Handler einen fremden Zugriff versucht und einen Fehler erwartet. Er läuft in CI und deckt ein neu hinzugefügtes Tool automatisch mit ab, auch wenn niemand daran denkt.
+Abgesichert durch einen Test, der über die Tool-Registry iteriert, für jeden registrierten Handler einen fremden Zugriff versucht und einen Fehler erwartet. Er läuft in CI und deckt ein neu hinzugefügtes Tool automatisch mit ab, auch wenn niemand daran denkt. *(Umsetzung: die zentrale Prüfung sitzt in `apps/app/src/router.ts` mit injizierbarem `ownershipCheck`; der registry-weite Test in `apps/app/test/router.test.ts`.)*
 
 Zusätzlich ist zu prüfen, ob PostgreSQL Row-Level-Security als zweite Verteidigungslinie sinnvoll ist. Für den Anfang genügt die zentrale Prüfung; RLS ist ein guter Kandidat für die Zeit nach dem Livegang, wenn das Schema stabil ist.
 

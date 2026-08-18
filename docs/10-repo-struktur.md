@@ -1,6 +1,23 @@
 # 10 — Repository-Struktur und Tooling
 
-## Monorepo
+## Aktueller Stand
+
+Der Baum unten ist das **Zielbild**. Umgesetzt und getestet ist bislang:
+
+```
+packages/core        ✅  Plan-Matrix, Entitlements, Metrik-Helfer
+packages/analytics   ✅  Change-Attribution, CTR-Kurve (isoton)
+packages/db          ✅  Drizzle-Modelle, kanonische Migration, findClickDrift()
+packages/gsc-client  ✅  Client: Pagination, Backoff, Fehlerübersetzung
+apps/app             🧱  Gerüst: tool/access/budget/registry/router + tools/meta
+apps/worker          🧱  Gerüst: rate-limit/planner/bulk-export
+```
+
+Zwei bewusste Abweichungen vom Zielbild: Die Tool-Definitionen liegen vorerst in `apps/app/src/tools/` statt in einem eigenen `packages/mcp-tools` — solange es wenige sind, ist das näher am Router und einfacher. `packages/billing` und `apps/web` existieren noch nicht (Phase 5). Wächst die Tool-Zahl, wird `mcp-tools` herausgezogen; das ist ein reiner Verschiebeschritt.
+
+Offen ist alles Netzwerkseitige: `apps/app/src/oauth`, `.../mcp/transport.ts`, die laufende Verdrahtung in `apps/worker` sowie `deploy/`.
+
+## Monorepo (Zielbild)
 
 ```
 gsc-mcp/
