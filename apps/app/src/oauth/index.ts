@@ -13,4 +13,6 @@ export * from "./dcr.ts";
 export * from "./authenticator.ts";
 export * from "./codes.ts";
 export * from "./google.ts";
+export * from "./google-adapter.ts";
+export * from "./crypto.ts";
 export * from "./provider.ts";
