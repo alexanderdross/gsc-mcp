@@ -26,6 +26,16 @@ export {
   makeFindCannibalization,
   makeContentDecay,
 } from "./tools/analysis.ts";
+export * from "./indexing.ts";
+export {
+  makeInspectUrl,
+  makeBulkInspectUrls,
+  makeIndexCoverageOverview,
+  makeListSitemaps,
+  makeSubmitSitemap,
+  type IndexingRepo,
+  type InspectionBudget,
+} from "./tools/indexing.ts";
 
 import { ToolRegistry } from "./registry.ts";
 import { showPricing, makeGetCapabilities } from "./tools/meta.ts";
@@ -39,11 +49,21 @@ import {
   makeFindCannibalization,
   makeContentDecay,
 } from "./tools/analysis.ts";
+import {
+  makeInspectUrl,
+  makeBulkInspectUrls,
+  makeIndexCoverageOverview,
+  makeListSitemaps,
+  makeSubmitSitemap,
+  type IndexingRepo,
+} from "./tools/indexing.ts";
 import type { WarehouseRepo } from "./repo.ts";
 
 export interface RegistryDeps {
   /** Warehouse-Zugang für die datentragenden Tools. Fehlt er, werden nur Meta-Tools registriert. */
   readonly repo?: WarehouseRepo;
+  /** Indexierungs-Zugang (GSC-Client, Cache, Budget) für die Indexierungs-Tools. */
+  readonly indexing?: IndexingRepo;
 }
 
 /** Baut die Registry mit den derzeit implementierten Tools. */
@@ -61,6 +81,13 @@ export function buildRegistry(deps: RegistryDeps = {}): ToolRegistry {
     registry.register(makeDetectAnomalies(deps.repo));
     registry.register(makeFindCannibalization(deps.repo));
     registry.register(makeContentDecay(deps.repo));
+  }
+  if (deps.indexing) {
+    registry.register(makeInspectUrl(deps.indexing));
+    registry.register(makeBulkInspectUrls(deps.indexing));
+    registry.register(makeIndexCoverageOverview(deps.indexing));
+    registry.register(makeListSitemaps(deps.indexing));
+    registry.register(makeSubmitSitemap(deps.indexing));
   }
   return registry;
 }
