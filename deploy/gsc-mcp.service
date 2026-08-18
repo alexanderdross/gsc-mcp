@@ -1,0 +1,27 @@
+# systemd-Unit für den MCP-/OAuth-Server ([docs/01]).
+# Alternative zu docker-compose, wenn Node direkt auf dem Host läuft.
+# Ablage: /etc/systemd/system/gsc-mcp.service
+#   systemctl daemon-reload && systemctl enable --now gsc-mcp
+
+[Unit]
+Description=GSC-MCP Server (MCP + OAuth Authorization Server)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gscmcp
+WorkingDirectory=/opt/gsc-mcp
+EnvironmentFile=/opt/gsc-mcp/.env
+ExecStart=/usr/bin/npx tsx apps/app/src/main.ts
+Restart=on-failure
+RestartSec=5
+# Härtung
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/gsc-mcp
+
+[Install]
+WantedBy=multi-user.target
