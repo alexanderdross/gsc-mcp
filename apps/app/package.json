@@ -9,6 +9,7 @@
   "dependencies": {
     "@gsc/core": "*",
     "@gsc/analytics": "*",
+    "@gsc/db": "*",
     "zod": "^3.23.8"
   },
   "scripts": {

@@ -39,12 +39,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
       - name: psql bereitstellen
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
       - name: Schema aufbauen und funktional prüfen
         env:
           PGURL: postgres://postgres:postgres@localhost:5432/citest
         run: node scripts/validate-ddl.mjs
+      - run: npm ci
+      - name: Warehouse-Repository gegen PostgreSQL
+        env:
+          PGURL: postgres://postgres:postgres@localhost:5432/citest
+        run: npx vitest run packages/db/test/warehouse-repo.integration.test.ts
 
   docs:
     name: Dokumente und Artefakt-Seite
