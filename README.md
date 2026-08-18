@@ -4,7 +4,7 @@ Remote-MCP-Server, der Google-Search-Console-Daten in Claude, ChatGPT und Cursor
 
 **Domain:** `gsc2mcp.drossmedia.de` · **Betrieb:** netcup Root Server, Nürnberg, mit Cloudflare davor
 
-> **Status:** Umsetzung begonnen. Die netzwerkunabhängige Kernlogik steht als getestete Packages (`core`, `analytics`, `db`, `gsc-client`) samt Gerüst für MCP-Server (`apps/app`) und Sync-Worker (`apps/worker`). Die netzwerkseitige Verdrahtung — MCP-Transport, OAuth-Provider, Google-Anbindung — folgt mit Phase 0/1 der Roadmap, sobald Domain und GCP-OAuth-Client stehen.
+> **Status:** Die gesamte Anwendung steht als getesteter Code — MCP-Server (JSON- und SSE-Transport), OAuth-Authorization-Server, beide Datenpfade (Lesen und Ingest), Sync-Worker und HTTP-Bootstrap, dazu die Deploy-Artefakte. 253 Tests, davon 34 gegen echtes PostgreSQL. Offen ist nur noch das Anbinden an reale externe Systeme (GCP-OAuth-Client samt Google-Verifizierung, BigQuery-Dienstkonto, Server-Bestellung, Live-DNS). Der [Umsetzungsstand (docs/13)](docs/13-status.md) hält das PR-übergreifend fest.
 
 ## Worum es geht
 
@@ -33,6 +33,7 @@ Wie groß der Unterschied ist, ist gemessen: Bei `sc-domain:aip.aero` entfallen 
 | [10 — Repo-Struktur](docs/10-repo-struktur.md) | Monorepo-Layout, Tooling |
 | [11 — Go-to-Market](docs/11-go-to-market.md) | Connector Directory, Kanäle, Launch |
 | [**12 — Wettbewerb & USP**](docs/12-wettbewerb-usp.md) | Marktscan, ehrliche Prüfung der Differenzierer, Positionierung |
+| [13 — Umsetzungsstand](docs/13-status.md) | PR-übergreifender Ist-Zustand des Codes, Testtiefe, offene Betreiber-Schritte |
 
 ## Architektur in Kürze
 
@@ -63,8 +64,8 @@ Monorepo, npm-Workspaces, TypeScript strict, Vitest.
 | `packages/analytics` | Change-Attribution, CTR-Kurve (isoton) — der USP | ✅ getestet |
 | `packages/db` | Drizzle-Modelle, kanonische Migration, Abstimmungs-Helfer | ✅ getestet |
 | `packages/gsc-client` | Search-Console-Client: Pagination, Backoff, Fehlerübersetzung | ✅ getestet |
-| `apps/app` | MCP-Server: Registry, Router, Zugriffs-Gate, Antwortbudget | 🧱 Gerüst |
-| `apps/worker` | Sync: Rate-Limiter, Job-Planung, Bulk-Export-Transformationen | 🧱 Gerüst |
+| `apps/app` | MCP-Server (JSON + SSE), OAuth-AS, HTTP-Routing, Bootstrap | ✅ getestet |
+| `apps/worker` | Sync: Rate-Limiter, Planer, beide Ingest-Pfade, pg-boss-Konsument | ✅ getestet |
 
 Die kanonische DDL liegt in `packages/db/migrations/0001_init.sql` und wird gegen echtes PostgreSQL validiert; [docs/03](docs/03-datenmodell.md) begründet sie.
 
