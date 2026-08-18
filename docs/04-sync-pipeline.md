@@ -97,10 +97,14 @@ SELECT data_date, query, url, is_anonymized_query,
 
 | Eigenschaft | Folge für uns |
 |---|---|
-| `sum_top_position` ist bereits eine Summe, nullbasiert | Umrechnung auf unsere einsbasierte `position_sum` beim Einlesen |
+| `sum_top_position` ist bereits eine Summe, nullbasiert | Umrechnung auf unsere einsbasierte `position_sum` beim Einlesen (`+ impressions`) |
 | `is_anonymized_query` markiert Zeilen ohne Query-Text | fließen in den Sammelposten `query_id = 0` |
-| Zwei Tabellen: `searchdata_site_impression` und `…url_impression` | erstere speist `fact_totals`, letztere `fact_query_page` und die abgeleiteten Grains |
+| `searchdata_site_impression` | query-unabhängig → speist `fact_totals`, `fact_geo_device` und `fact_appearance` |
+| `searchdata_url_impression` | pro URL und Query → speist `fact_query`, `fact_page`, `fact_query_page` |
+| **Search Appearance ist keine Dimension, sondern boolesche Spalten** (`is_amp_top_stories`, `is_job_listing`, `is_product_snippets`, …) | müssen beim Einlesen zu `fact_appearance`-Zeilen entpivotiert werden — eine Zeile je gesetztem Flag. Das ist der einzige nicht-triviale Transformationsschritt und gehört mit einem Testfall abgesichert |
+| Discover und Google News liegen in eigenen Tabellen (`searchdata_url_impression` deckt nur Web/Image/Video/News-Suche ab) | eigener Ingest-Zweig, falls die Property diese Kanäle hat |
 | Daten erscheinen mit Verzug und werden nachkorrigiert | die letzten drei Tagespartitionen werden erneut gelesen und geupsertet |
+| Kein Stunden-Grain im Export | `fact_hourly` bleibt API-gespeist (nur Pro, letzte ~10 Tage) |
 | Kein Rückwirken auf die Zeit vor Aktivierung | daher der einmalige API-Backfill für die 16 Monate davor |
 
 **Zustandsüberwachung.** `core.bq_exports.last_data_date` hält fest, wie weit der Export reicht. Bleiben Partitionen aus — abgelaufene Abrechnung, entzogene Rechte, gelöschtes Dataset —, wechselt der Status auf `degraded`, die Property fällt automatisch auf den API-Sync zurück und der Nutzer wird benachrichtigt. Ein stillschweigend versiegender Datenstrom wäre der schlimmste Fehlerfall: Er fiele erst Wochen später auf, und die Lücke ließe sich dann nicht mehr schließen, weil die API nur 16 Monate zurückreicht.
