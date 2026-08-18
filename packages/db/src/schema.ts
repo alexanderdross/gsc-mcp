@@ -91,6 +91,18 @@ export const syncState = core.table(
   (t) => [primaryKey({ columns: [t.propertyId, t.grain, t.searchType] })],
 );
 
+export const quotaCounters = core.table(
+  "quota_counters",
+  {
+    userId: bigint("user_id", { mode: "number" }).notNull(),
+    kind: text("kind").notNull(), // 'url_inspect' | 'export' | 'live_query'
+    propertyId: bigint("property_id", { mode: "number" }).notNull().default(0),
+    windowStart: date("window_start").notNull(),
+    used: integer("used").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.kind, t.propertyId, t.windowStart] })],
+);
+
 export const bqExports = core.table("bq_exports", {
   propertyId: bigint("property_id", { mode: "number" }).primaryKey(),
   gcpProject: text("gcp_project").notNull(),

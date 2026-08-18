@@ -8,6 +8,7 @@
   "references": [
     { "path": "../../packages/core" },
     { "path": "../../packages/analytics" },
-    { "path": "../../packages/db" }
+    { "path": "../../packages/db" },
+    { "path": "../../packages/gsc-client" }
   ]
 }

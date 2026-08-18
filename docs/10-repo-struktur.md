@@ -10,7 +10,8 @@ packages/analytics   ✅  Change-Attribution, CTR-Kurve (isoton)
 packages/db          ✅  Drizzle-Modelle, kanonische Migration, findClickDrift(),
                           WarehouseRepo-Port + Implementierung (gg. echtes PostgreSQL getestet)
 packages/gsc-client  ✅  Client: Pagination, Backoff, Fehlerübersetzung
-apps/app             🧱  Gerüst: tool/access/budget/registry/router + alle Tool-Handler
+apps/app             🧱  Gerüst: tool/access/budget/registry/router + alle Tool-Handler,
+                          IndexingRepository (GSC-Client + DB-Cache + Budget, gg. PostgreSQL getestet)
 apps/worker          🧱  Gerüst: rate-limit/planner/bulk-export
 ```
 

@@ -36,6 +36,11 @@ export {
   type IndexingRepo,
   type InspectionBudget,
 } from "./tools/indexing.ts";
+export {
+  IndexingRepository,
+  type InspectionQueue,
+  type IndexingRepositoryDeps,
+} from "./indexing-repo.ts";
 export * from "./google-updates.ts";
 export * from "./csv.ts";
 export {
