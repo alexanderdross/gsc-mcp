@@ -22,7 +22,7 @@ Gesamt bis zum kommerziellen Start: rund **elf Wochen Arbeitszeit**. Die tatsäc
 
 **Der Sinn dieser Phase ist, die Wartezeiten früh zu starten.**
 
-- **Domain `gsc2mcp.com`** über Cloudflare Registrar registrieren (zum Einkaufspreis, nicht erstattungsfähig — Tippfehler kosten). Hostnamen: `www` für Web, `api` proxied für MCP und OAuth, `eu` als DNS-only-Direktweg
+- **Subdomain `gsc2mcp.drossmedia.de`** in der bestehenden Cloudflare-Zone anlegen (kostenlos, keine Registrierung). Ein proxied Host, pfadgeroutet für Web/MCP/OAuth; dazu `gsc2mcp-direct.drossmedia.de` als DNS-only-Direktweg ([01-architektur.md](01-architektur.md))
 - Google-Cloud-Projekt, OAuth-Client, Search Console API aktivieren
 - **OAuth-Verifizierung für `webmasters.readonly` einreichen** — Datenschutzerklärung, Demo-Video, Brand Verification. Dauer: mehrere Wochen
 - **Quotenerhöhung beantragen**, mit der Bedarfsrechnung aus [04-sync-pipeline.md](04-sync-pipeline.md)
@@ -139,7 +139,7 @@ Die Entwicklung ist selten der Engpass. Wird die Verifizierung in Phase 0 angest
 | Bulk-Export-Einrichtung schreckt Nutzer ab | Konversion bricht ein | geführtes Panel in Phase 4; Starter-Plan funktioniert ohne Bulk Export |
 | Preisdruck durch kostenlose Alternativen | Einstiegspläne tragen nicht | Schwerpunkt auf Agenturgeschäft, siehe [07-billing.md](07-billing.md) |
 | Server fällt aus | Connector offline, Kunden merken es | externe Überwachung auf **beiden** Hostnamen, Warm Standby in Phase 6 |
-| Cloudflare-Ausfall | Connector offline, obwohl Server läuft | dokumentierter Direktweg über `eu.gsc2mcp.com` |
+| Cloudflare-Ausfall | Connector offline, obwohl Server läuft | dokumentierter Direktweg über `gsc2mcp-direct.drossmedia.de` |
 | SSE-Keepalive vergessen | sporadische Verbindungsabbrüche, schwer zuzuordnen | in Phase 1 auf `staging` hinter dem echten Proxy prüfen |
 | Datenverlust im Archiv | Alleinstellungsmerkmal weg — Daten über 16 Monate sind nirgends sonst | pgBackRest mit PITR, monatliche Parquet-Exporte, **Wiederherstellungsübung in Phase 5** |
 | Volumenschätzung zu optimistisch | Kalkulation falsch | Validierung an echten Daten am Ende von Phase 2, vor der Preisfestlegung |

@@ -4,17 +4,18 @@ Die Wettbewerbsanalyse und der daraus abgeleitete USP stehen in [12-wettbewerb-u
 
 ## Marke und Domain
 
-**`gsc2mcp.com`**, registriert über Cloudflare Registrar zum Einkaufspreis.
+**`gsc2mcp.drossmedia.de`** — Subdomain der bestehenden Cloudflare-Zone `drossmedia.de`, keine gesonderte Registrierung.
 
-| Hostname | Zweck |
-|---|---|
-| `www.gsc2mcp.com` | Landingpage, Dashboard, Dokumentation, Rechtliches |
-| `api.gsc2mcp.com` | MCP-Endpunkt und OAuth — über Cloudflare proxied |
-| `eu.gsc2mcp.com` | dieselben Endpunkte, DNS-only, direkt nach Nürnberg |
+| Hostname | Rolle | Cloudflare |
+|---|---|---|
+| `gsc2mcp.drossmedia.de` | alles: Web, MCP (`/mcp`), OAuth — pfadgeroutet | proxied |
+| `gsc2mcp-direct.drossmedia.de` | dieselben Endpunkte, direkt nach Nürnberg | DNS only |
 
-Der dritte Hostname ist kein technisches Detail, sondern ein Verkaufsargument: Er ist der Zugangsweg für Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, und zugleich der Notweg bei einem Cloudflare-Ausfall ([08-security-dsgvo.md](08-security-dsgvo.md)). Der Name sagt, wozu er da ist.
+Warum ein Host statt `www`/`api`-Trennung: Cloudflares kostenloses Wildcard deckt nur die erste Subdomain-Ebene, `api.gsc2mcp.drossmedia.de` wäre die zweite und kostenpflichtig. Pfad-Routing löst das für null Euro ([01-architektur.md](01-architektur.md)). Der Direkthost bleibt auf der ersten Ebene und ist damit vom Wildcard gedeckt.
 
-**Zur Namenswahl:** Der Name benennt die technische Verbindung, nicht den Nutzen, und bindet die Marke an das MCP-Protokoll. Das ist eine bewusste Entscheidung für die technisch versierte Zielgruppe. Die Konsequenz für das Marketing: **Der Nutzen muss in der Überschrift stehen, weil er nicht im Namen steht.** Nicht „GSC zu MCP", sondern „Vollständige Search-Console-Daten in deinem KI-Assistenten — auch die, die Google längst gelöscht hat."
+Der Direkthost ist kein technisches Detail, sondern ein Verkaufsargument: Zugangsweg für Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, und Notweg bei einem Cloudflare-Ausfall ([08-security-dsgvo.md](08-security-dsgvo.md)).
+
+**Zur Namenswahl:** `gsc2mcp` benennt die technische Verbindung, nicht den Nutzen, und bindet die Marke an das MCP-Protokoll — eine bewusste Entscheidung für die technisch versierte Zielgruppe. Die Subdomain unter `drossmedia.de` spart Kosten, hat aber zwei Konsequenzen fürs Marketing, die man kennen muss: Der OAuth-Dialog zeigt `drossmedia.de` statt einer eigenständigen Produktmarke, und ein späterer Domainwechsel zöge eine erneute Google-Verifizierung nach sich. Solange das Produkt hier bleibt, gilt: **Der Nutzen muss in der Überschrift stehen, weil er weder im Namen noch in der Domain steht** — nicht „GSC zu MCP", sondern „Vollständige Search-Console-Daten in deinem KI-Assistenten, auch die, die Google längst gelöscht hat."
 
 ## Der entscheidende Vertriebskanal
 

@@ -2,7 +2,7 @@
 
 Remote-MCP-Server, der Google-Search-Console-Daten in Claude, ChatGPT und Cursor verfügbar macht — auf Basis von **Googles vollständigem Datenexport** statt der limitierten API.
 
-**Domain:** `gsc2mcp.com` · **Betrieb:** netcup Root Server, Nürnberg, mit Cloudflare davor
+**Domain:** `gsc2mcp.drossmedia.de` · **Betrieb:** netcup Root Server, Nürnberg, mit Cloudflare davor
 
 > **Status:** Konzeptphase. Dieses Repository enthält derzeit ausschließlich die Konzeption. Produktivcode folgt ab Phase 1 der Roadmap.
 
@@ -51,7 +51,7 @@ Claude / ChatGPT / Cursor
         └──▶ BigQuery Bulk Export    (laufend, vollständig, ohne API-Quote)
 ```
 
-Ein zweiter Hostname `eu.gsc2mcp.com` läuft ohne Cloudflare direkt auf den Server — für Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, und als Notweg bei einem Proxy-Ausfall.
+Ein zweiter Hostname `gsc2mcp-direct.drossmedia.de` läuft ohne Cloudflare direkt auf den Server — für Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, und als Notweg bei einem Proxy-Ausfall.
 
 ## Nächste Schritte
 
