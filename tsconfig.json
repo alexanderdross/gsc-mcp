@@ -4,6 +4,7 @@
     { "path": "packages/core" },
     { "path": "packages/analytics" },
     { "path": "packages/db" },
-    { "path": "packages/gsc-client" }
+    { "path": "packages/gsc-client" },
+    { "path": "apps/app" }
   ]
 }
