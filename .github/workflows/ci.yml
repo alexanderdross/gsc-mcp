@@ -47,10 +47,11 @@ jobs:
           PGURL: postgres://postgres:postgres@localhost:5432/citest
         run: node scripts/validate-ddl.mjs
       - run: npm ci
-      - name: Warehouse-Repository gegen PostgreSQL
+      - name: Repositories gegen PostgreSQL (Integration)
         env:
           PGURL: postgres://postgres:postgres@localhost:5432/citest
-        run: npx vitest run packages/db/test/warehouse-repo.integration.test.ts
+        # Beide Integrationstests teilen sich die Datenbank — daher seriell.
+        run: npx vitest run integration --no-file-parallelism
 
   docs:
     name: Dokumente und Artefakt-Seite
