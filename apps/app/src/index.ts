@@ -47,6 +47,9 @@ export * from "./mcp/index.ts";
 export * from "./oauth/index.ts";
 export * from "./http/index.ts";
 export * from "./runtime/index.ts";
+export * from "./config.ts";
+export * from "./app.ts";
+export { main } from "./main.ts";
 export {
   getGoogleUpdates,
   makeExportData,
