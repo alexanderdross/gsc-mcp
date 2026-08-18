@@ -127,6 +127,52 @@ CREATE TABLE core.processed_events (
 );
 ```
 
+### OAuth-Zustand
+
+Der eigene Authorization Server ([docs/02]) hält seinen Zustand hier: registrierte Clients (Dynamic Client Registration), die während der Google-Zustimmung schwebende Autorisierung, der einmalig einlösbare Authorization-Code sowie Access- und Refresh-Tokens. Access-Tokens tragen `user_id`, Scope und Zielressource (RFC 8707), niemals Google-Credentials; Widerruf ist sofort wirksam, weil jeder Request den Grant prüft.
+
+```sql
+CREATE TABLE core.oauth_clients (
+  client_id                  text PRIMARY KEY,
+  client_secret              text,                 -- nur vertrauliche Clients
+  redirect_uris              text[] NOT NULL,
+  token_endpoint_auth_method text NOT NULL DEFAULT 'none',
+  grant_types                text[] NOT NULL,
+  response_types             text[] NOT NULL,
+  scope                      text,
+  client_name                text,
+  created_at                 timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE core.oauth_pending (          -- schwebt über den Google-Umweg, nach unserem state
+  state text PRIMARY KEY, client_id text NOT NULL, redirect_uri text NOT NULL,
+  code_challenge text NOT NULL, code_challenge_method text NOT NULL,
+  scope text NOT NULL, audience text, client_state text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE core.oauth_auth_codes (       -- einmalig, kurzlebig (Löschen bei Einlösung)
+  code text PRIMARY KEY, client_id text NOT NULL, redirect_uri text NOT NULL,
+  code_challenge text NOT NULL, code_challenge_method text NOT NULL,
+  scope text NOT NULL, audience text,
+  user_id bigint NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
+  expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE core.oauth_access_tokens (    -- kurzlebig (~1 h)
+  token text PRIMARY KEY,
+  user_id bigint NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
+  scope text NOT NULL, audience text, expires_at timestamptz NOT NULL
+);
+
+CREATE TABLE core.oauth_refresh_tokens (   -- rotieren bei jeder Einlösung
+  token text PRIMARY KEY,
+  user_id bigint NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
+  client_id text NOT NULL, scope text NOT NULL, audience text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
 ### Sync-Zustand und Rate-Budget
 
 ```sql

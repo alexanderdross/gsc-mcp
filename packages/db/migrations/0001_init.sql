@@ -106,6 +106,68 @@ CREATE TABLE core.processed_events (
   processed_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- OAuth-Zustand des eigenen Authorization Servers ([docs/02]).
+-- Dynamic Client Registration (RFC 7591): öffentliche PKCE-Clients ohne Secret.
+CREATE TABLE core.oauth_clients (
+  client_id                  text        PRIMARY KEY,
+  client_secret              text,                      -- nur vertrauliche Clients
+  redirect_uris              text[]      NOT NULL,
+  token_endpoint_auth_method text        NOT NULL DEFAULT 'none',
+  grant_types                text[]      NOT NULL,
+  response_types             text[]      NOT NULL,
+  scope                      text,
+  client_name                text,
+  created_at                 timestamptz NOT NULL DEFAULT now()
+);
+
+-- Schwebende Autorisierung während der Google-Zustimmung (nach unserem state).
+CREATE TABLE core.oauth_pending (
+  state                 text        PRIMARY KEY,
+  client_id             text        NOT NULL,
+  redirect_uri          text        NOT NULL,
+  code_challenge        text        NOT NULL,
+  code_challenge_method text        NOT NULL,
+  scope                 text        NOT NULL,
+  audience              text,                           -- RFC 8707
+  client_state          text,
+  created_at            timestamptz NOT NULL DEFAULT now()
+);
+
+-- Einmalig einlösbarer Authorization-Code (Löschen bei Einlösung).
+CREATE TABLE core.oauth_auth_codes (
+  code                  text        PRIMARY KEY,
+  client_id             text        NOT NULL,
+  redirect_uri          text        NOT NULL,
+  code_challenge        text        NOT NULL,
+  code_challenge_method text        NOT NULL,
+  scope                 text        NOT NULL,
+  audience              text,
+  user_id               bigint      NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
+  expires_at            timestamptz NOT NULL,
+  created_at            timestamptz NOT NULL DEFAULT now()
+);
+
+-- Kurzlebige Access-Tokens; Widerruf ist sofort wirksam, weil jeder Request prüft.
+CREATE TABLE core.oauth_access_tokens (
+  token      text        PRIMARY KEY,
+  user_id    bigint      NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
+  scope      text        NOT NULL,
+  audience   text,
+  expires_at timestamptz NOT NULL
+);
+CREATE INDEX ON core.oauth_access_tokens (user_id);
+
+-- Langlebige Refresh-Tokens; rotieren bei jeder Einlösung.
+CREATE TABLE core.oauth_refresh_tokens (
+  token      text        PRIMARY KEY,
+  user_id    bigint      NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
+  client_id  text        NOT NULL,
+  scope      text        NOT NULL,
+  audience   text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON core.oauth_refresh_tokens (user_id);
+
 CREATE TABLE core.sync_state (
   property_id  bigint NOT NULL REFERENCES core.properties(id) ON DELETE CASCADE,
   grain        text   NOT NULL,   -- totals|query|page|query_page|geo_device|appearance|hourly
