@@ -1,0 +1,41 @@
+# GSC-MCP — Reverse Proxy ([docs/01], [deploy/dns.md]).
+# Zwei Hosts: der proxied Weg hinter Cloudflare und der DNS-only Direktweg.
+# Entscheidend für MCP: `flush_interval -1` — sonst puffert Caddy den SSE-Strom.
+
+# ── Proxied hinter Cloudflare ──────────────────────────────────────────────
+gsc2mcp.drossmedia.de {
+	# Cloudflare-Origin-Zertifikat; Authenticated Origin Pulls erzwingen,
+	# damit niemand den Origin an Cloudflare vorbei erreicht ([deploy/dns.md]).
+	tls /etc/caddy/cf-origin.pem /etc/caddy/cf-origin.key {
+		client_auth {
+			mode require_and_verify
+			trust_pool file /etc/caddy/cloudflare-origin-pull-ca.pem
+		}
+	}
+
+	# /mcp nutzt langlebige Server-Sent-Events: nicht cachen, nicht umkodieren.
+	@mcp path /mcp*
+	header @mcp Cache-Control "no-store"
+
+	encode zstd gzip
+	# SSE nicht komprimieren (sonst puffert der Encoder).
+	@sse path /mcp*
+	request_body {
+		max_size 4MB
+	}
+
+	reverse_proxy 127.0.0.1:8080 {
+		# -1 deaktiviert die Pufferung → SSE fließt sofort ([docs/01]).
+		flush_interval -1
+	}
+}
+
+# ── DNS-only Direktweg (Caddy stellt selbst ein Let's-Encrypt-Zertifikat aus) ──
+gsc2mcp-direct.drossmedia.de {
+	@mcp path /mcp*
+	header @mcp Cache-Control "no-store"
+
+	reverse_proxy 127.0.0.1:8080 {
+		flush_interval -1
+	}
+}
