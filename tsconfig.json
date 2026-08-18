@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/analytics" }
+    { "path": "packages/analytics" },
+    { "path": "packages/db" }
   ]
 }

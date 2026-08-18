@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Extrahiert das Schema aus docs/03-datenmodell.md und wendet es auf eine echte
-// PostgreSQL-Instanz an. Prüft anschließend Partitionsrouting, Partition Pruning
-// und die Abstimmungsinvariante SUM(fact_query) = fact_totals.
+// Wendet die kanonische Migration (packages/db/migrations/0001_init.sql) auf eine
+// echte PostgreSQL-Instanz an und prüft Partitionsrouting, Partition Pruning und
+// die Abstimmungsinvariante SUM(fact_query) = fact_totals. Die Migration ist die
+// maßgebliche DDL-Quelle; docs/03-datenmodell.md dokumentiert sie.
 //
 // Aufruf:  PGURL=postgres://… node scripts/validate-ddl.mjs
 // Ohne pg-Client-Bibliothek — nutzt psql, das in CI und lokal verfügbar ist.
@@ -11,20 +12,16 @@ import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const DOC = 'docs/03-datenmodell.md'
+const MIGRATION = 'packages/db/migrations/0001_init.sql'
 const PGURL = process.env.PGURL ?? 'postgres://postgres:postgres@localhost:5432/postgres'
 
 const fail = (msg) => { console.error(`✗ ${msg}`); process.exitCode = 1 }
 const ok = (msg) => console.log(`✓ ${msg}`)
 
-// ── Schema aus dem Dokument ziehen ───────────────────────────────────────────
-const md = readFileSync(DOC, 'utf8')
-const blocks = [...md.matchAll(/```sql\n([\s\S]*?)```/g)].map((m) => m[1])
-// Nur Blöcke, die Objekte anlegen. Reine Beispielabfragen (mit $1-Bindungen)
-// gehören nicht ins Schema und würden hier zu Recht scheitern.
-const schema = blocks.filter((b) => /^\s*CREATE /m.test(b)).join('\n')
+// ── Kanonische Migration lesen ───────────────────────────────────────────────
+const schema = readFileSync(MIGRATION, 'utf8')
 
-if (!schema.includes('CREATE SCHEMA core')) fail('Schema-Extraktion hat core nicht gefunden')
+if (!schema.includes('CREATE SCHEMA core')) fail('Migration enthält kein CREATE SCHEMA core')
 
 const dir = mkdtempSync(join(tmpdir(), 'gscmcp-'))
 const schemaFile = join(dir, 'schema.sql')
@@ -37,7 +34,7 @@ const psql = (sql, file) =>
 // ── 1. Schema aufbauen ───────────────────────────────────────────────────────
 try {
   psql(null, schemaFile)
-  ok(`Schema aus ${DOC} fehlerfrei aufgebaut (${blocks.length} SQL-Blöcke, davon ${schema.split('CREATE ').length - 1} CREATE)`)
+  ok(`Migration ${MIGRATION} fehlerfrei aufgebaut (${schema.split('CREATE ').length - 1} CREATE-Anweisungen)`)
 } catch (e) {
   fail(`Schema-Aufbau fehlgeschlagen:\n${e.stderr ?? e.message}`)
   process.exit(1)
