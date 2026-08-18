@@ -141,7 +141,7 @@ describe("Indexierungs-Tools", () => {
     expect(out.buckets[0]).toEqual({ key: "PASS", count: 2 });
   });
 
-  it("registriert fünf Indexierungs-Tools zusätzlich zu den Meta-Tools", () => {
-    expect(buildRegistry({ indexing: fakeIndexing() }).size).toBe(7);
+  it("registriert fünf Indexierungs-Tools zusätzlich zu den Meta- und Kontext-Tools", () => {
+    expect(buildRegistry({ indexing: fakeIndexing() }).size).toBe(8);
   });
 });

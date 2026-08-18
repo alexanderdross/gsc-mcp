@@ -8,6 +8,9 @@
 
 import type { Fact } from "@gsc/core";
 import type { SeriesPoint, CannibalInput, DecayInput } from "@gsc/analytics";
+import type { CsvRecord } from "./csv.ts";
+
+export type ExportDataset = "query" | "page" | "query_page" | "totals";
 
 export type Dimension = "query" | "page" | "country" | "device";
 export type Source = "warehouse" | "live" | "mixed";
@@ -90,4 +93,7 @@ export interface WarehouseRepo {
 
   /** Seiten- und Site-YoY-Werte — Grundlage von content_decay. */
   decayInputs(propertyId: number, searchType: string): Promise<DecayInputs>;
+
+  /** Flache Datensätze eines Datasets für den Export. */
+  exportDataset(propertyId: number, dataset: ExportDataset, period: Period): Promise<readonly CsvRecord[]>;
 }

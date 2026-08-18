@@ -28,6 +28,9 @@ function fakeRepo(over: Partial<WarehouseRepo>): WarehouseRepo {
     async decayInputs() {
       return { pages: [], siteYoy: 0 };
     },
+    async exportDataset() {
+      return [];
+    },
     ...over,
   };
 }

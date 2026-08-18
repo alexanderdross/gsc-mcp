@@ -36,6 +36,14 @@ export {
   type IndexingRepo,
   type InspectionBudget,
 } from "./tools/indexing.ts";
+export * from "./google-updates.ts";
+export * from "./csv.ts";
+export {
+  getGoogleUpdates,
+  makeExportData,
+  type ExportStore,
+  type StoredExport,
+} from "./tools/context.ts";
 
 import { ToolRegistry } from "./registry.ts";
 import { showPricing, makeGetCapabilities } from "./tools/meta.ts";
@@ -57,6 +65,7 @@ import {
   makeSubmitSitemap,
   type IndexingRepo,
 } from "./tools/indexing.ts";
+import { getGoogleUpdates, makeExportData, type ExportStore } from "./tools/context.ts";
 import type { WarehouseRepo } from "./repo.ts";
 
 export interface RegistryDeps {
@@ -64,6 +73,8 @@ export interface RegistryDeps {
   readonly repo?: WarehouseRepo;
   /** Indexierungs-Zugang (GSC-Client, Cache, Budget) für die Indexierungs-Tools. */
   readonly indexing?: IndexingRepo;
+  /** Objektspeicher für `export_data` (präsignierte URLs). Nur mit `repo` wirksam. */
+  readonly exportStore?: ExportStore;
 }
 
 /** Baut die Registry mit den derzeit implementierten Tools. */
@@ -71,6 +82,8 @@ export function buildRegistry(deps: RegistryDeps = {}): ToolRegistry {
   const registry = new ToolRegistry();
   registry.register(showPricing);
   registry.register(makeGetCapabilities(registry));
+  // Kontext ohne I/O — immer verfügbar (auch ohne Property/Repo).
+  registry.register(getGoogleUpdates);
   if (deps.repo) {
     registry.register(makeSearchPerformance(deps.repo));
     registry.register(makeTopMovers(deps.repo));
@@ -81,6 +94,9 @@ export function buildRegistry(deps: RegistryDeps = {}): ToolRegistry {
     registry.register(makeDetectAnomalies(deps.repo));
     registry.register(makeFindCannibalization(deps.repo));
     registry.register(makeContentDecay(deps.repo));
+    if (deps.exportStore) {
+      registry.register(makeExportData(deps.repo, deps.exportStore));
+    }
   }
   if (deps.indexing) {
     registry.register(makeInspectUrl(deps.indexing));
