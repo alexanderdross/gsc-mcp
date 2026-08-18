@@ -18,11 +18,27 @@ export * from "./format.ts";
 export { showPricing, makeGetCapabilities } from "./tools/meta.ts";
 export { makeSearchPerformance, makeTopMovers } from "./tools/performance.ts";
 export { makeComparePeriods } from "./tools/compare.ts";
+export {
+  makeStrikingDistance,
+  makeCtrAnalysis,
+  makeBrandVsNonbrand,
+  makeDetectAnomalies,
+  makeFindCannibalization,
+  makeContentDecay,
+} from "./tools/analysis.ts";
 
 import { ToolRegistry } from "./registry.ts";
 import { showPricing, makeGetCapabilities } from "./tools/meta.ts";
 import { makeSearchPerformance, makeTopMovers } from "./tools/performance.ts";
 import { makeComparePeriods } from "./tools/compare.ts";
+import {
+  makeStrikingDistance,
+  makeCtrAnalysis,
+  makeBrandVsNonbrand,
+  makeDetectAnomalies,
+  makeFindCannibalization,
+  makeContentDecay,
+} from "./tools/analysis.ts";
 import type { WarehouseRepo } from "./repo.ts";
 
 export interface RegistryDeps {
@@ -39,6 +55,12 @@ export function buildRegistry(deps: RegistryDeps = {}): ToolRegistry {
     registry.register(makeSearchPerformance(deps.repo));
     registry.register(makeTopMovers(deps.repo));
     registry.register(makeComparePeriods(deps.repo));
+    registry.register(makeStrikingDistance(deps.repo));
+    registry.register(makeCtrAnalysis(deps.repo));
+    registry.register(makeBrandVsNonbrand(deps.repo));
+    registry.register(makeDetectAnomalies(deps.repo));
+    registry.register(makeFindCannibalization(deps.repo));
+    registry.register(makeContentDecay(deps.repo));
   }
   return registry;
 }

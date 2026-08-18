@@ -7,6 +7,7 @@
  */
 
 import type { Fact } from "@gsc/core";
+import type { SeriesPoint, CannibalInput, DecayInput } from "@gsc/analytics";
 
 export type Dimension = "query" | "page" | "country" | "device";
 export type Source = "warehouse" | "live" | "mixed";
@@ -37,8 +38,16 @@ export interface PerfResult {
   readonly totals: Fact;
   /** Impressionen der von Google anonymisierten Anfragen (Sammelposten). */
   readonly anonymizedImpressions: number;
+  /** Der Sammelposten als vollständiger Fakt — für brand_vs_nonbrand. */
+  readonly anonymized?: Fact;
   readonly source: Source;
   readonly covered: Period;
+}
+
+/** Eingaben für content_decay: Seitenwerte plus der Site-YoY als Referenz. */
+export interface DecayInputs {
+  readonly pages: readonly DecayInput[];
+  readonly siteYoy: number;
 }
 
 export interface SegmentPair {
@@ -68,4 +77,17 @@ export interface WarehouseRepo {
     b: Period,
     searchType: string,
   ): Promise<readonly SegmentPair[]>;
+
+  /** Tägliche Klick-Zeitreihe — Grundlage von detect_anomalies. */
+  timeseries(propertyId: number, period: Period, searchType: string): Promise<readonly SeriesPoint[]>;
+
+  /** Query×URL×Woche-Zeilen — Grundlage von find_cannibalization. */
+  cannibalizationRows(
+    propertyId: number,
+    period: Period,
+    searchType: string,
+  ): Promise<readonly CannibalInput[]>;
+
+  /** Seiten- und Site-YoY-Werte — Grundlage von content_decay. */
+  decayInputs(propertyId: number, searchType: string): Promise<DecayInputs>;
 }

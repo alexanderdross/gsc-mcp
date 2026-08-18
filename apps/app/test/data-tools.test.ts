@@ -42,6 +42,15 @@ function fakeRepo(data: {
     ) {
       return data.pairs ?? [];
     },
+    async timeseries() {
+      return [];
+    },
+    async cannibalizationRows() {
+      return [];
+    },
+    async decayInputs() {
+      return { pages: [], siteYoy: 0 };
+    },
   };
   return repo;
 }
@@ -207,6 +216,6 @@ describe("top_movers", () => {
 describe("Registry", () => {
   it("registriert Datentools nur mit Repo", () => {
     expect(buildRegistry().size).toBe(2); // nur Meta
-    expect(buildRegistry({ repo: fakeRepo({}) }).size).toBe(5);
+    expect(buildRegistry({ repo: fakeRepo({}) }).size).toBe(11);
   });
 });
