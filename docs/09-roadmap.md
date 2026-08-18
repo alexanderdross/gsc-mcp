@@ -16,6 +16,8 @@ Zwei Ziele mit unterschiedlicher Dringlichkeit: eigener Nutzen möglichst früh,
 
 Gesamt bis zum kommerziellen Start: rund **elf Wochen Arbeitszeit**. Die tatsächliche Kalenderdauer bestimmt die Google-Verifizierung, nicht die Entwicklung.
 
+> **Stand der Umsetzung:** Die netzwerkunabhängige Kernlogik ist gebaut und getestet — `packages/core`, `packages/analytics`, `packages/db`, `packages/gsc-client` sowie die Gerüste `apps/app` (Registry, Router, Gates) und `apps/worker` (Rate-Limiter, Job-Planung, Bulk-Export-Transformationen). Offen ist die netzwerkseitige Verdrahtung aus Phase 1 (MCP-Transport, OAuth-Provider, Google-Anbindung) sowie alle Schritte, die externe Infrastruktur berühren.
+
 ---
 
 ## Phase 0 — Setup und Anträge

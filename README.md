@@ -4,7 +4,7 @@ Remote-MCP-Server, der Google-Search-Console-Daten in Claude, ChatGPT und Cursor
 
 **Domain:** `gsc2mcp.drossmedia.de` · **Betrieb:** netcup Root Server, Nürnberg, mit Cloudflare davor
 
-> **Status:** Konzeptphase. Dieses Repository enthält derzeit ausschließlich die Konzeption. Produktivcode folgt ab Phase 1 der Roadmap.
+> **Status:** Umsetzung begonnen. Die netzwerkunabhängige Kernlogik steht als getestete Packages (`core`, `analytics`, `db`, `gsc-client`) samt Gerüst für MCP-Server (`apps/app`) und Sync-Worker (`apps/worker`). Die netzwerkseitige Verdrahtung — MCP-Transport, OAuth-Provider, Google-Anbindung — folgt mit Phase 0/1 der Roadmap, sobald Domain und GCP-OAuth-Client stehen.
 
 ## Worum es geht
 
@@ -52,6 +52,31 @@ Claude / ChatGPT / Cursor
 ```
 
 Ein zweiter Hostname `gsc2mcp-direct.drossmedia.de` läuft ohne Cloudflare direkt auf den Server — für Kunden, deren Beschaffung keinen US-Auftragsverarbeiter zulässt, und als Notweg bei einem Proxy-Ausfall.
+
+## Projektstruktur
+
+Monorepo, npm-Workspaces, TypeScript strict, Vitest.
+
+| Package | Rolle | Status |
+|---|---|---|
+| `packages/core` | Plan-Matrix, Entitlements, Metrik-Grundregeln | ✅ getestet |
+| `packages/analytics` | Change-Attribution, CTR-Kurve (isoton) — der USP | ✅ getestet |
+| `packages/db` | Drizzle-Modelle, kanonische Migration, Abstimmungs-Helfer | ✅ getestet |
+| `packages/gsc-client` | Search-Console-Client: Pagination, Backoff, Fehlerübersetzung | ✅ getestet |
+| `apps/app` | MCP-Server: Registry, Router, Zugriffs-Gate, Antwortbudget | 🧱 Gerüst |
+| `apps/worker` | Sync: Rate-Limiter, Job-Planung, Bulk-Export-Transformationen | 🧱 Gerüst |
+
+Die kanonische DDL liegt in `packages/db/migrations/0001_init.sql` und wird gegen echtes PostgreSQL validiert; [docs/03](docs/03-datenmodell.md) begründet sie.
+
+## Entwicklung
+
+```bash
+npm install
+npm run typecheck   # tsc --build über alle Packages
+npm test            # Vitest über packages/*/test und apps/*/test
+```
+
+CI (GitHub Actions) prüft zusätzlich die Migration gegen ein echtes PostgreSQL, die Konzeptdokumente (Links, Konsistenz) und die Übersichtsseite in beiden Themes. Siehe [docs/10-repo-struktur.md](docs/10-repo-struktur.md) und `CLAUDE.md`.
 
 ## Nächste Schritte
 
