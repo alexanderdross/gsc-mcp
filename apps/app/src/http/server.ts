@@ -9,7 +9,31 @@
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { SseStream, SSE_HEADERS, type SseStreamOptions } from "../mcp/sse.ts";
 import type { HttpRouter } from "./router.ts";
+
+/**
+ * Öffnet einen SSE-Strom auf einer node:http-Antwort: schreibt die Streaming-Header und
+ * verpackt `res` als `SseSink`. Netzgebundene Glue-Schicht; die Ereignis- und
+ * Keepalive-Logik liegt testbar in `SseStream`. Der Aufrufer sendet danach Ereignisse
+ * über den zurückgegebenen Strom und ruft `close()`, wenn die Sitzung endet.
+ */
+export function startSseStream(res: ServerResponse, opts?: SseStreamOptions): SseStream {
+  res.writeHead(200, { ...SSE_HEADERS });
+  const stream = new SseStream(
+    {
+      write: (chunk) => {
+        res.write(chunk);
+      },
+      close: () => {
+        res.end();
+      },
+    },
+    opts,
+  );
+  stream.start();
+  return stream;
+}
 
 /** Erzeugt einen HTTP-Server, der jeden Request an den Router übergibt. */
 export function createHttpServer(router: HttpRouter): Server {

@@ -10,3 +10,4 @@ export * from "./schema.ts";
 export * from "./session.ts";
 export * from "./dispatch.ts";
 export * from "./transport.ts";
+export * from "./sse.ts";
