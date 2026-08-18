@@ -33,10 +33,22 @@ export interface ClientStore {
   get(clientId: string): Promise<OAuthClient | undefined>;
 }
 
+/** Ein Refresh-Token — langlebig, rotiert bei jeder Einlösung ([docs/02]). */
+export interface RefreshGrant {
+  readonly token: string;
+  readonly userId: number;
+  readonly clientId: string;
+  readonly scope: string;
+  readonly audience?: string;
+}
+
 export interface TokenStore {
   saveAccess(grant: AccessGrant): Promise<void>;
   getAccess(token: string): Promise<AccessGrant | undefined>;
   revokeAccess(token: string): Promise<void>;
+  saveRefresh(grant: RefreshGrant): Promise<void>;
+  getRefresh(token: string): Promise<RefreshGrant | undefined>;
+  revokeRefresh(token: string): Promise<void>;
 }
 
 export class InMemoryClientStore implements ClientStore {
@@ -52,17 +64,30 @@ export class InMemoryClientStore implements ClientStore {
 }
 
 export class InMemoryTokenStore implements TokenStore {
-  readonly #tokens = new Map<string, AccessGrant>();
+  readonly #access = new Map<string, AccessGrant>();
+  readonly #refresh = new Map<string, RefreshGrant>();
 
   async saveAccess(grant: AccessGrant): Promise<void> {
-    this.#tokens.set(grant.token, grant);
+    this.#access.set(grant.token, grant);
   }
 
   async getAccess(token: string): Promise<AccessGrant | undefined> {
-    return this.#tokens.get(token);
+    return this.#access.get(token);
   }
 
   async revokeAccess(token: string): Promise<void> {
-    this.#tokens.delete(token);
+    this.#access.delete(token);
+  }
+
+  async saveRefresh(grant: RefreshGrant): Promise<void> {
+    this.#refresh.set(grant.token, grant);
+  }
+
+  async getRefresh(token: string): Promise<RefreshGrant | undefined> {
+    return this.#refresh.get(token);
+  }
+
+  async revokeRefresh(token: string): Promise<void> {
+    this.#refresh.delete(token);
   }
 }
