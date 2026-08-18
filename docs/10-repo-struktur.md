@@ -18,7 +18,7 @@ apps/worker          🧱  Gerüst: rate-limit/planner/bulk-export + ingest (Agg
 
 Zwei bewusste Abweichungen vom Zielbild: Die Tool-Definitionen liegen vorerst in `apps/app/src/tools/` statt in einem eigenen `packages/mcp-tools` — solange es wenige sind, ist das näher am Router und einfacher. `packages/billing` und `apps/web` existieren noch nicht (Phase 5). Wächst die Tool-Zahl, wird `mcp-tools` herausgezogen; das ist ein reiner Verschiebeschritt.
 
-Vom MCP-Transport und OAuth steht der netzunabhängige Kern, inklusive der HTTP-Routing-Schicht (`apps/app/src/http/`: reiner `HttpRouter` für `/mcp`, `/authorize`, `/token`, `/register`, `/.well-known/*` und den Google-Rückkanal; dünne `node:http`-Schale). Offen bleibt nur noch der netzgebundene Rest: der langlebige SSE-Strom mit 30-s-Keepalive neben dem JSON-Pfad, die laufende Verdrahtung in `apps/worker` (pg-boss), die echten Google-/BigQuery-Zugänge sowie `deploy/`.
+Vom MCP-Transport und OAuth steht der netzunabhängige Kern, inklusive der HTTP-Routing-Schicht (`apps/app/src/http/`: reiner `HttpRouter` für `/mcp`, `/authorize`, `/token`, `/register`, `/.well-known/*` und den Google-Rückkanal; dünne `node:http`-Schale) und der SSE-Bausteine (`apps/app/src/mcp/sse.ts`: Ereignis-Kodierung und Keepalive-Strom, zeitgeber- und sink-injiziert, damit der 30-s-Keepalive ohne echte Uhr prüfbar ist). Offen bleibt nur noch das Netzgebundene: das Verweben von SSE und JSON-Pfad im laufenden Server, die Verdrahtung in `apps/worker` (pg-boss), die echten Google-/BigQuery-Zugänge sowie `deploy/`.
 
 ## Monorepo (Zielbild)
 
