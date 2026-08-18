@@ -43,6 +43,7 @@ export {
 } from "./indexing-repo.ts";
 export * from "./google-updates.ts";
 export * from "./csv.ts";
+export * from "./mcp/index.ts";
 export {
   getGoogleUpdates,
   makeExportData,
