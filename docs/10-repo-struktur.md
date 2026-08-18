@@ -8,7 +8,7 @@ Der Baum unten ist das **Zielbild**. Umgesetzt und getestet ist bislang:
 packages/core        ✅  Plan-Matrix, Entitlements, Metrik-Helfer
 packages/analytics   ✅  Change-Attribution, CTR-Kurve (isoton)
 packages/db          ✅  Drizzle-Modelle, kanonische Migration, findClickDrift(),
-                          WarehouseRepo-Port + Implementierung (gg. echtes PostgreSQL getestet)
+                          WarehouseRepo (Lesen) + WarehouseWriter (Ingest) gg. echtes PostgreSQL getestet
 packages/gsc-client  ✅  Client: Pagination, Backoff, Fehlerübersetzung
 apps/app             🧱  Gerüst: tool/access/budget/registry/router + alle Tool-Handler,
                           IndexingRepository (GSC-Client + DB-Cache + Budget, gg. PostgreSQL getestet),
