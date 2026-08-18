@@ -35,6 +35,8 @@ Unser Server ist zugleich Authorization Server. Claude kennt keine API-Keys; ein
 
 **Token-Design:** Kurzlebige Access-Tokens (eine Stunde) mit Refresh-Token-Rotation. Das Token trägt `user_id` und Scope, aber niemals Google-Credentials. Widerruf ist serverseitig sofort wirksam, weil jeder Request den Grant in der Datenbank prüft.
 
+> **Umsetzung (Stand):** Die netzunabhängigen Bausteine stehen in `apps/app/src/oauth/` und sind vollständig getestet: Metadaten (RFC 8414/9728, `metadata.ts`), PKCE-S256 (`pkce.ts`), Dynamic Client Registration mit Redirect-Allowlist (`dcr.ts`), Client-/Token-Speicher als Schnittstelle plus In-Memory-Variante (`store.ts`) und der Bearer-Authentifikator, der die `Authorization`-Kopfzeile auf eine Router-`Session` abbildet, Ablauf und Zielressource (RFC 8707) prüft und den MCP-Transport bedient (`authenticator.ts`). Damit ist ein schlanker, eigener AS möglich; ob stattdessen `node-oidc-provider` davorgesetzt wird, ist eine Entscheidung beim Verdrahten — die Schnittstellen (Speicher, Authentifikator) bleiben gleich. Offen: der `/authorize`↔Google-Fluss, die persistente Speicher-Implementierung und das Ausliefern über HTTP.
+
 ## Ebene 2 — unser Server ↔ Google
 
 Innerhalb des `/authorize`-Flows wird der Nutzer zu Google weitergeleitet.
