@@ -95,6 +95,35 @@ export class GoogleOAuth implements GoogleAuth {
       scopes: (json.scope ?? "").split(" ").filter(Boolean),
     };
   }
+
+  /** Tauscht einen Refresh-Token gegen einen frischen Access-Token (grant_type=refresh_token). */
+  async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresInSec: number }> {
+    const body = new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: this.#clientId,
+      client_secret: this.#clientSecret,
+      grant_type: "refresh_token",
+    }).toString();
+
+    const res = await this.#fetch(this.#tokenEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!res.ok) {
+      throw new Error(`Google-Token-Endpunkt (refresh) antwortete mit ${res.status}.`);
+    }
+    const json = (await res.json()) as GoogleTokenResponse;
+    if (!json.access_token) {
+      throw new Error("Google-Refresh-Antwort ohne access_token.");
+    }
+    return { accessToken: json.access_token, expiresInSec: json.expires_in ?? 3600 };
+  }
+}
+
+/** Was der Token-Provider von einem Google-Adapter braucht (für Tests injizierbar). */
+export interface GoogleTokenRefresher {
+  refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresInSec: number }>;
 }
 
 /**
