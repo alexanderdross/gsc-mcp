@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import type { Fact } from "@gsc/core";
 import { fitCtrCurve, expectedCtr, type CtrObservation } from "../src/index.ts";
 
 function obs(position: number, clicks: number, impressions: number): CtrObservation {

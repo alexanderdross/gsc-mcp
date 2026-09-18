@@ -19,10 +19,18 @@ function fact(clicks: number, impressions: number, position: number): Fact {
 }
 
 /** Fake-Repo, das einen festen Datensatz für den Export zurückgibt. */
-function fakeRepo(rows: readonly ExportRow[]): WarehouseRepo & { lastExport?: { dataset: ExportDataset; period: Period } } {
+function fakeRepo(
+  rows: readonly ExportRow[],
+): WarehouseRepo & { lastExport?: { dataset: ExportDataset; period: Period } } {
   const repo: WarehouseRepo & { lastExport?: { dataset: ExportDataset; period: Period } } = {
     async performance(q) {
-      return { rows: [], totals: fact(0, 0, 0), anonymizedImpressions: 0, source: "warehouse", covered: q.period };
+      return {
+        rows: [],
+        totals: fact(0, 0, 0),
+        anonymizedImpressions: 0,
+        source: "warehouse",
+        covered: q.period,
+      };
     },
     async segmentPairs() {
       return [];
@@ -127,7 +135,9 @@ describe("export_data", () => {
   it("serialisiert das Dataset und legt es als präsignierte URL ab", async () => {
     const repo = fakeRepo(rows);
     const store = fakeStore();
-    const router = new Router(buildRegistry({ repo, exportStore: store }), { ownershipCheck: owns });
+    const router = new Router(buildRegistry({ repo, exportStore: store }), {
+      ownershipCheck: owns,
+    });
     const session: Session = { plan: "starter", userId: 1, propertyId: 7, detail: "standard" };
 
     const res = await router.run(session, "export_data", {
@@ -137,13 +147,22 @@ describe("export_data", () => {
     });
     expect(res.kind).toBe("ok");
     if (res.kind !== "ok") return;
-    const out = res.output as { dataset: string; rows: number; format: string; url: string; expiresAt: string };
+    const out = res.output as {
+      dataset: string;
+      rows: number;
+      format: string;
+      url: string;
+      expiresAt: string;
+    };
     expect(out.dataset).toBe("query");
     expect(out.rows).toBe(2);
     expect(out.format).toBe("csv");
     expect(out.url).toContain("https://r2.example/");
     expect(out.expiresAt).toBe("2026-08-19T00:00:00Z");
-    expect(repo.lastExport).toEqual({ dataset: "query", period: { from: "2026-08-01", to: "2026-08-16" } });
+    expect(repo.lastExport).toEqual({
+      dataset: "query",
+      period: { from: "2026-08-01", to: "2026-08-16" },
+    });
     // Der abgelegte Körper ist das CSV der Zeilen.
     expect(store.lastBody).toBe(toCsv(rows));
     expect(store.lastName).toContain("query");
@@ -153,11 +172,15 @@ describe("export_data", () => {
     const router = new Router(buildRegistry({ repo: fakeRepo(rows), exportStore: fakeStore() }), {
       ownershipCheck: owns,
     });
-    const res = await router.run({ plan: "starter", userId: 1, detail: "standard" }, "export_data", {
-      dataset: "query",
-      from: "2026-08-01",
-      to: "2026-08-16",
-    });
+    const res = await router.run(
+      { plan: "starter", userId: 1, detail: "standard" },
+      "export_data",
+      {
+        dataset: "query",
+        from: "2026-08-01",
+        to: "2026-08-16",
+      },
+    );
     expect(res.kind).toBe("denied");
   });
 
@@ -165,11 +188,15 @@ describe("export_data", () => {
     const router = new Router(buildRegistry({ repo: fakeRepo(rows), exportStore: fakeStore() }), {
       ownershipCheck: owns,
     });
-    const res = await router.run({ plan: "free", userId: 1, propertyId: 7, detail: "standard" }, "export_data", {
-      dataset: "query",
-      from: "2026-08-01",
-      to: "2026-08-16",
-    });
+    const res = await router.run(
+      { plan: "free", userId: 1, propertyId: 7, detail: "standard" },
+      "export_data",
+      {
+        dataset: "query",
+        from: "2026-08-01",
+        to: "2026-08-16",
+      },
+    );
     expect(res.kind).toBe("denied");
   });
 

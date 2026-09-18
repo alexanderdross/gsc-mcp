@@ -33,7 +33,7 @@ export async function main(env: Record<string, string | undefined> = process.env
   const app = buildApp({ db, google, config, queue });
   const server = createHttpServer(app.router);
   server.listen(config.port, () => {
-    // eslint-disable-next-line no-console — Startmeldung des Servers
+    // eslint-disable-next-line no-console -- Startmeldung des Servers
     console.log(`gsc-mcp hört auf :${config.port} (issuer ${config.issuer})`);
   });
 }
@@ -41,7 +41,7 @@ export async function main(env: Record<string, string | undefined> = process.env
 // Nur ausführen, wenn direkt gestartet (nicht beim Import in Tests).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err: unknown) => {
-    // eslint-disable-next-line no-console — Startfehler
+    // eslint-disable-next-line no-console -- Startfehler
     console.error(err);
     process.exitCode = 1;
   });

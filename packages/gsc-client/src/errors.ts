@@ -48,8 +48,7 @@ interface GoogleErrorBody {
 export function classifyGscError(status: number, body: unknown): GscError {
   const parsed = (body ?? {}) as GoogleErrorBody;
   const reason = parsed.error?.errors?.[0]?.reason;
-  const message =
-    parsed.error?.message ?? `Search Console API antwortete mit ${status}`;
+  const message = parsed.error?.message ?? `Search Console API antwortete mit ${status}`;
 
   switch (status) {
     case 400:

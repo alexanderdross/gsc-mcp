@@ -41,6 +41,8 @@ describe("loadConfig", () => {
   it("wirft bei fehlender Pflichtvariable und falschem Schlüssel", () => {
     const { ISSUER: _unused, ...noIssuer } = base;
     expect(() => loadConfig(noIssuer)).toThrow(/ISSUER/);
-    expect(() => loadConfig({ ...base, ENCRYPTION_KEY: Buffer.alloc(16).toString("base64") })).toThrow();
+    expect(() =>
+      loadConfig({ ...base, ENCRYPTION_KEY: Buffer.alloc(16).toString("base64") }),
+    ).toThrow();
   });
 });

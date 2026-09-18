@@ -93,7 +93,10 @@ describe("callToolResult", () => {
 
 describe("McpServer.receive", () => {
   it("initialize meldet Protokollversion und Server-Info", async () => {
-    const res = await server().receive({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }, freeSession);
+    const res = await server().receive(
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+      freeSession,
+    );
     expect(res).not.toBeNull();
     const result = (res as { result: Record<string, unknown> }).result;
     expect(result.protocolVersion).toBe(MCP_PROTOCOL_VERSION);
@@ -101,8 +104,12 @@ describe("McpServer.receive", () => {
   });
 
   it("tools/list liefert die registrierten Tools mit inputSchema", async () => {
-    const res = await server().receive({ jsonrpc: "2.0", id: 2, method: "tools/list" }, freeSession);
-    const tools = (res as { result: { tools: Array<{ name: string; inputSchema: unknown }> } }).result.tools;
+    const res = await server().receive(
+      { jsonrpc: "2.0", id: 2, method: "tools/list" },
+      freeSession,
+    );
+    const tools = (res as { result: { tools: Array<{ name: string; inputSchema: unknown }> } })
+      .result.tools;
     expect(tools.map((t) => t.name)).toContain("get_google_updates");
     expect(tools.every((t) => t.inputSchema && typeof t.inputSchema === "object")).toBe(true);
   });
@@ -117,7 +124,8 @@ describe("McpServer.receive", () => {
       },
       freeSession,
     );
-    const result = (res as { result: { content: Array<{ text: string }>; isError?: boolean } }).result;
+    const result = (res as { result: { content: Array<{ text: string }>; isError?: boolean } })
+      .result;
     expect(result.isError).toBeUndefined();
     expect(JSON.parse(result.content[0]!.text)).toHaveProperty("updates");
   });
@@ -131,7 +139,10 @@ describe("McpServer.receive", () => {
   });
 
   it("tools/call ohne name → InvalidParams", async () => {
-    const res = await server().receive({ jsonrpc: "2.0", id: 5, method: "tools/call", params: {} }, freeSession);
+    const res = await server().receive(
+      { jsonrpc: "2.0", id: 5, method: "tools/call", params: {} },
+      freeSession,
+    );
     expect((res as { error: { code: number } }).error.code).toBe(-32602);
   });
 
@@ -141,7 +152,10 @@ describe("McpServer.receive", () => {
   });
 
   it("Notification liefert keine Antwort", async () => {
-    const res = await server().receive({ jsonrpc: "2.0", method: "notifications/initialized" }, freeSession);
+    const res = await server().receive(
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      freeSession,
+    );
     expect(res).toBeNull();
   });
 });
@@ -169,14 +183,19 @@ describe("McpEndpoint (POST /mcp)", () => {
   function endpoint(session: Session | null = freeSession) {
     let n = 0;
     const store = new InMemorySessionStore(() => `sess-${++n}`);
-    const srv = new McpServer(buildRegistry(), new Router(buildRegistry(), { ownershipCheck: owns }));
+    const srv = new McpServer(
+      buildRegistry(),
+      new Router(buildRegistry(), { ownershipCheck: owns }),
+    );
     return new McpEndpoint({ server: srv, store, authenticate: async () => session });
   }
 
   const body = (msg: JsonRpcRequest) => JSON.stringify(msg);
 
   it("initialize vergibt eine Mcp-Session-Id im Header", async () => {
-    const res = await endpoint().post(body({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }));
+    const res = await endpoint().post(
+      body({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+    );
     expect(res.status).toBe(200);
     expect(res.headers["mcp-session-id"]).toBe("sess-1");
     expect(res.headers["cache-control"]).toBe("no-store");
@@ -205,7 +224,9 @@ describe("McpEndpoint (POST /mcp)", () => {
   });
 
   it("nicht authentifiziert → 401", async () => {
-    const res = await endpoint(null).post(body({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }));
+    const res = await endpoint(null).post(
+      body({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+    );
     expect(res.status).toBe(401);
   });
 

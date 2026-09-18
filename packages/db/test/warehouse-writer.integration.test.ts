@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { createDb, WarehouseWriter, WarehouseRepository, findClickDrift, type Db } from "../src/index.ts";
+import {
+  createDb,
+  WarehouseWriter,
+  WarehouseRepository,
+  findClickDrift,
+  type Db,
+} from "../src/index.ts";
 import type pg from "pg";
 
 /**
@@ -46,13 +52,40 @@ describe.skipIf(!PGURL)("WarehouseWriter (PostgreSQL)", () => {
 
   it("schreibt Totals und Query-Fakten abstimmbar (Sammelposten inklusive)", async () => {
     await writer.writeTotals(pid, [
-      { day: "2026-08-16", searchType: "web", clicks: 989, impressions: 30607, positionSum: 30607 * 7.8 },
+      {
+        day: "2026-08-16",
+        searchType: "web",
+        clicks: 989,
+        impressions: 30607,
+        positionSum: 30607 * 7.8,
+      },
     ]);
     await writer.writeQueryFacts(pid, [
-      { query: "aip germany", day: "2026-08-16", searchType: "web", clicks: 520, impressions: 15000, positionSum: 48000 },
-      { query: "aip", day: "2026-08-16", searchType: "web", clicks: 5, impressions: 30, positionSum: 81 },
+      {
+        query: "aip germany",
+        day: "2026-08-16",
+        searchType: "web",
+        clicks: 520,
+        impressions: 15000,
+        positionSum: 48000,
+      },
+      {
+        query: "aip",
+        day: "2026-08-16",
+        searchType: "web",
+        clicks: 5,
+        impressions: 30,
+        positionSum: 81,
+      },
       // Sammelposten: 520 + 5 + 464 = 989 = Totals
-      { query: null, day: "2026-08-16", searchType: "web", clicks: 464, impressions: 15577, positionSum: 15577 * 7.9 },
+      {
+        query: null,
+        day: "2026-08-16",
+        searchType: "web",
+        clicks: 464,
+        impressions: 15577,
+        positionSum: 15577 * 7.9,
+      },
     ]);
 
     // Abstimmung: keine Drift.
@@ -76,7 +109,13 @@ describe.skipIf(!PGURL)("WarehouseWriter (PostgreSQL)", () => {
   it("ist idempotent: erneutes Schreiben aktualisiert statt zu duplizieren", async () => {
     // Korrigierte Totals für denselben Tag.
     await writer.writeTotals(pid, [
-      { day: "2026-08-16", searchType: "web", clicks: 990, impressions: 30610, positionSum: 30610 * 7.8 },
+      {
+        day: "2026-08-16",
+        searchType: "web",
+        clicks: 990,
+        impressions: 30610,
+        positionSum: 30610 * 7.8,
+      },
     ]);
     const totals = await pool.query(
       "SELECT count(*)::int AS n, max(clicks) AS clicks FROM wh.fact_totals WHERE property_id=$1 AND day='2026-08-16'",
@@ -89,12 +128,28 @@ describe.skipIf(!PGURL)("WarehouseWriter (PostgreSQL)", () => {
   it("verwendet Wörterbucheinträge wieder (stabile query_id)", async () => {
     // Gleiche Query an einem anderen Tag.
     await writer.writeTotals(pid, [
-      { day: "2026-08-17", searchType: "web", clicks: 500, impressions: 12000, positionSum: 12000 * 3 },
+      {
+        day: "2026-08-17",
+        searchType: "web",
+        clicks: 500,
+        impressions: 12000,
+        positionSum: 12000 * 3,
+      },
     ]);
     await writer.writeQueryFacts(pid, [
-      { query: "aip germany", day: "2026-08-17", searchType: "web", clicks: 500, impressions: 12000, positionSum: 36000 },
+      {
+        query: "aip germany",
+        day: "2026-08-17",
+        searchType: "web",
+        clicks: 500,
+        impressions: 12000,
+        positionSum: 36000,
+      },
     ]);
-    const rows = await pool.query("SELECT count(*)::int AS n FROM wh.dim_query WHERE property_id=$1 AND text='aip germany'", [pid]);
+    const rows = await pool.query(
+      "SELECT count(*)::int AS n FROM wh.dim_query WHERE property_id=$1 AND text='aip germany'",
+      [pid],
+    );
     expect(rows.rows[0].n).toBe(1); // ein Wörterbucheintrag, wiederverwendet
 
     // first_seen/last_seen spannen jetzt beide Tage.
@@ -108,11 +163,31 @@ describe.skipIf(!PGURL)("WarehouseWriter (PostgreSQL)", () => {
 
   it("schreibt Seiten-Fakten und liest sie zurück", async () => {
     await writer.writeTotals(pid, [
-      { day: "2026-08-18", searchType: "web", clicks: 300, impressions: 8000, positionSum: 8000 * 4 },
+      {
+        day: "2026-08-18",
+        searchType: "web",
+        clicks: 300,
+        impressions: 8000,
+        positionSum: 8000 * 4,
+      },
     ]);
     await writer.writePageFacts(pid, [
-      { page: "https://example.com/charts", day: "2026-08-18", searchType: "web", clicks: 250, impressions: 5500, positionSum: 5500 * 4.2 },
-      { page: "https://example.com/vfr", day: "2026-08-18", searchType: "web", clicks: 50, impressions: 2500, positionSum: 2500 * 9 },
+      {
+        page: "https://example.com/charts",
+        day: "2026-08-18",
+        searchType: "web",
+        clicks: 250,
+        impressions: 5500,
+        positionSum: 5500 * 4.2,
+      },
+      {
+        page: "https://example.com/vfr",
+        day: "2026-08-18",
+        searchType: "web",
+        clicks: 50,
+        impressions: 2500,
+        positionSum: 2500 * 9,
+      },
     ]);
     const perf = await repo.performance({
       propertyId: pid,
@@ -122,7 +197,10 @@ describe.skipIf(!PGURL)("WarehouseWriter (PostgreSQL)", () => {
       sortBy: "clicks",
       limit: 100,
     });
-    expect(perf.rows.map((r) => r.key)).toEqual(["https://example.com/charts", "https://example.com/vfr"]);
+    expect(perf.rows.map((r) => r.key)).toEqual([
+      "https://example.com/charts",
+      "https://example.com/vfr",
+    ]);
     expect(perf.rows[0]!.clicks).toBe(250);
   });
 });

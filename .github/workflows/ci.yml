@@ -1,5 +1,14 @@
 name: CI
 
+# Läuft auf dem eigenen self-hosted Runner (netcup, Linux), nicht auf
+# GitHub-gehosteten Runnern. Voraussetzungen auf dem Runner:
+#   - Labels "self-hosted" und "linux" (Standard-Labels eines Linux-Runners),
+#   - apt + Root (per sudo oder als root): PostgreSQL-Server im ddl-Job und
+#     die Playwright-Systemabhängigkeiten im render-Job werden im Job selbst
+#     installiert. Docker wird NICHT vorausgesetzt (Service-Container laufen
+#     auf self-hosted Runnern ohne Docker-Daemon nicht).
+# Node stellt actions/setup-node bereit.
+
 on:
   push:
     branches: ["**"]
@@ -8,7 +17,7 @@ on:
 jobs:
   build:
     name: Typecheck und Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,43 +28,74 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
-  ddl:
-    name: DDL gegen PostgreSQL
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: citest
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+  lint:
+    name: Lint und Formatierung
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-      - name: psql bereitstellen
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier
+        run: npm run format:check
+
+  audit:
+    name: Dependency-Audit
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: npm audit
+        # Informativ: meldet bekannte Schwachstellen, lässt den Check aber
+        # grün (continue-on-error am Schritt → Job-Ergebnis success).
+        # Die eigentliche Behebung fährt Dependabot (.github/dependabot.yml).
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  ddl:
+    name: DDL gegen PostgreSQL
+    runs-on: [self-hosted, linux]
+    env:
+      PGURL: postgres://postgres:postgres@localhost:5432/citest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: PostgreSQL bereitstellen und starten
+        # Kein Docker-Service-Container (auf self-hosted Runnern ohne Docker
+        # nicht verfügbar) — PostgreSQL wird direkt auf dem Runner installiert
+        # und der Cluster gestartet. Läuft sowohl als root als auch per sudo.
+        run: |
+          set -eu
+          if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo"; fi
+          as_pg() { if [ "$(id -u)" -eq 0 ]; then runuser -u postgres -- "$@"; else sudo -u postgres "$@"; fi; }
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends postgresql postgresql-client
+          PGVER="$(ls /etc/postgresql | sort -n | tail -1)"
+          $SUDO pg_ctlcluster "$PGVER" main start
+          for _ in $(seq 1 30); do pg_isready -h localhost -p 5432 && break; sleep 1; done
+          as_pg psql -c "ALTER USER postgres PASSWORD 'postgres';"
+          as_pg createdb citest
       - name: Schema aufbauen und funktional prüfen
-        env:
-          PGURL: postgres://postgres:postgres@localhost:5432/citest
         run: node scripts/validate-ddl.mjs
       - run: npm ci
       - name: Repositories gegen PostgreSQL (Integration)
-        env:
-          PGURL: postgres://postgres:postgres@localhost:5432/citest
         # Beide Integrationstests teilen sich die Datenbank — daher seriell.
         run: npx vitest run integration --no-file-parallelism
 
   docs:
     name: Dokumente und Artefakt-Seite
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,7 +105,7 @@ jobs:
 
   render:
     name: Artefakt-Seite rendern
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

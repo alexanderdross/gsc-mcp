@@ -37,7 +37,10 @@ export function planInspectionBatch(
   budgetRemaining: number,
   maxUrls?: number,
 ): BatchPlan {
-  const cap = Math.max(0, Math.min(budgetRemaining, maxUrls ?? candidates.length, candidates.length));
+  const cap = Math.max(
+    0,
+    Math.min(budgetRemaining, maxUrls ?? candidates.length, candidates.length),
+  );
   return { planned: candidates.slice(0, cap), deferred: candidates.length - cap };
 }
 
@@ -72,9 +75,9 @@ export function summarizeCoverage(
   for (const r of records) {
     const key =
       groupBy === "verdict"
-        ? r.verdict ?? "unbekannt"
+        ? (r.verdict ?? "unbekannt")
         : groupBy === "coverage_state"
-          ? r.coverageState ?? "unbekannt"
+          ? (r.coverageState ?? "unbekannt")
           : directoryOf(r.url);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }

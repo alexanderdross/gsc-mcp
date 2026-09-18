@@ -42,7 +42,12 @@ function gens(): OAuthGenerators {
 
 const google: GoogleAuth = {
   authorizeUrl: (state) => `https://accounts.google.com/o/oauth2/v2/auth?state=${state}`,
-  exchange: async () => ({ googleSub: "sub-9", email: "a@b.de", refreshToken: "g", scopes: ["webmasters.readonly"] }),
+  exchange: async () => ({
+    googleSub: "sub-9",
+    email: "a@b.de",
+    refreshToken: "g",
+    scopes: ["webmasters.readonly"],
+  }),
 };
 const users: UserDirectory = { linkGoogle: async () => ({ userId: 7 }) };
 
@@ -61,7 +66,10 @@ function makeRouter() {
     now: () => 1_700_000_000_000,
   });
   const mcp = new McpEndpoint({
-    server: new McpServer(buildRegistry(), new Router(buildRegistry(), { ownershipCheck: async () => true })),
+    server: new McpServer(
+      buildRegistry(),
+      new Router(buildRegistry(), { ownershipCheck: async () => true }),
+    ),
     store: new InMemorySessionStore(() => "sess-1"),
     authenticate: makeBearerAuthenticator({
       tokenStore: tokens,
@@ -80,7 +88,10 @@ function makeRouter() {
       now: () => 0,
     },
     metadata: {
-      authorizationServer: authorizationServerMetadata({ issuer: ISSUER, scopesSupported: ["mcp"] }),
+      authorizationServer: authorizationServerMetadata({
+        issuer: ISSUER,
+        scopesSupported: ["mcp"],
+      }),
       protectedResource: protectedResourceMetadata({
         resource: RESOURCE,
         authorizationServers: [ISSUER],
@@ -203,7 +214,9 @@ describe("HttpRouter — voller OAuth-Fluss über HTTP bis zum MCP", () => {
     expect(JSON.parse(list.body).result.tools.length).toBeGreaterThan(0);
 
     // 7. DELETE /mcp beendet die Sitzung
-    const del = await router.handle(req({ method: "DELETE", path: "/mcp", headers: { "mcp-session-id": "sess-1" } }));
+    const del = await router.handle(
+      req({ method: "DELETE", path: "/mcp", headers: { "mcp-session-id": "sess-1" } }),
+    );
     expect(del.status).toBe(204);
   });
 

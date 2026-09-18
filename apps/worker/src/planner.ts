@@ -4,13 +4,7 @@
  * Reihenfolge — nach Nutzwert, nicht chronologisch — ohne Netzwerk prüfen.
  */
 
-export type Grain =
-  | "totals"
-  | "query"
-  | "page"
-  | "query_page"
-  | "geo_device"
-  | "appearance";
+export type Grain = "totals" | "query" | "page" | "query_page" | "geo_device" | "appearance";
 
 export const PRIORITY = {
   live: 10,
@@ -64,7 +58,14 @@ export function planBackfill(req: BackfillRequest): Job[] {
 
   for (const st of req.searchTypes) {
     if (has("totals")) {
-      jobs.push({ grain: "totals", searchType: st, dateFrom: req.from, dateTo: req.to, priority: p, seq: seq++ });
+      jobs.push({
+        grain: "totals",
+        searchType: st,
+        dateFrom: req.from,
+        dateTo: req.to,
+        priority: p,
+        seq: seq++,
+      });
     }
   }
   for (const grain of ["query", "page"] as const) {
@@ -78,13 +79,27 @@ export function planBackfill(req: BackfillRequest): Job[] {
   for (const grain of ["geo_device", "appearance"] as const) {
     if (!has(grain)) continue;
     for (const st of req.searchTypes) {
-      jobs.push({ grain, searchType: st, dateFrom: req.from, dateTo: req.to, priority: p, seq: seq++ });
+      jobs.push({
+        grain,
+        searchType: st,
+        dateFrom: req.from,
+        dateTo: req.to,
+        priority: p,
+        seq: seq++,
+      });
     }
   }
   if (has("query_page")) {
     for (const st of req.searchTypes) {
       for (const day of eachDayDesc(req.from, req.to)) {
-        jobs.push({ grain: "query_page", searchType: st, dateFrom: day, dateTo: day, priority: p, seq: seq++ });
+        jobs.push({
+          grain: "query_page",
+          searchType: st,
+          dateFrom: day,
+          dateTo: day,
+          priority: p,
+          seq: seq++,
+        });
       }
     }
   }
@@ -106,7 +121,14 @@ export function planDelta(
   let seq = 0;
   for (const grain of grains) {
     for (const st of searchTypes) {
-      jobs.push({ grain, searchType: st, dateFrom: from, dateTo: today, priority: PRIORITY.delta, seq: seq++ });
+      jobs.push({
+        grain,
+        searchType: st,
+        dateFrom: from,
+        dateTo: today,
+        priority: PRIORITY.delta,
+        seq: seq++,
+      });
     }
   }
   return jobs;

@@ -48,7 +48,10 @@ export class PgBossInspectionQueue implements InspectionQueue {
 export type InspectionHandler = (job: InspectionJob) => Promise<void>;
 
 /** Registriert den Konsumenten: verarbeitet jede Job-Charge Zeile für Zeile. */
-export async function startInspectionConsumer(worker: JobWorker, handle: InspectionHandler): Promise<void> {
+export async function startInspectionConsumer(
+  worker: JobWorker,
+  handle: InspectionHandler,
+): Promise<void> {
   await worker.work<InspectionJob>(INSPECTION_QUEUE, async (jobs) => {
     for (const job of jobs) await handle(job.data);
   });

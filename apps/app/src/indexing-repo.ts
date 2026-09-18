@@ -112,7 +112,10 @@ export class IndexingRepository implements IndexingRepo {
       const rows = await this.#db
         .select({ url: dimPage.url, delta: sql<number>`(${recent} - ${prior})::float8` })
         .from(factPage)
-        .innerJoin(dimPage, and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)))
+        .innerJoin(
+          dimPage,
+          and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)),
+        )
         .where(
           and(
             eq(factPage.propertyId, propertyId),
@@ -129,9 +132,15 @@ export class IndexingRepository implements IndexingRepo {
 
     // top_traffic (Vorgabe): meistgeklickte Seiten im Fenster.
     const rows = await this.#db
-      .select({ url: dimPage.url, clicks: sql<number>`coalesce(sum(${factPage.clicks}), 0)::float8` })
+      .select({
+        url: dimPage.url,
+        clicks: sql<number>`coalesce(sum(${factPage.clicks}), 0)::float8`,
+      })
       .from(factPage)
-      .innerJoin(dimPage, and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)))
+      .innerJoin(
+        dimPage,
+        and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)),
+      )
       .where(
         and(
           eq(factPage.propertyId, propertyId),
@@ -225,7 +234,11 @@ export class IndexingRepository implements IndexingRepo {
     return record(url, row.verdict, row.coverageState, row.indexingState, row.lastCrawl);
   }
 
-  async #storeInspection(propertyId: number, url: string, result: UrlInspectionResult): Promise<void> {
+  async #storeInspection(
+    propertyId: number,
+    url: string,
+    result: UrlInspectionResult,
+  ): Promise<void> {
     const s = result.indexStatusResult ?? {};
     const fields = {
       inspectedAt: new Date(),
@@ -250,7 +263,12 @@ export class IndexingRepository implements IndexingRepo {
       .insert(quotaCounters)
       .values({ userId, kind: QUOTA_KIND, propertyId, windowStart: utcToday(), used: n })
       .onConflictDoUpdate({
-        target: [quotaCounters.userId, quotaCounters.kind, quotaCounters.propertyId, quotaCounters.windowStart],
+        target: [
+          quotaCounters.userId,
+          quotaCounters.kind,
+          quotaCounters.propertyId,
+          quotaCounters.windowStart,
+        ],
         set: { used: sql`${quotaCounters.used} + ${n}` },
       });
   }
@@ -285,7 +303,13 @@ function record(
 
 function toRecord(url: string, result: UrlInspectionResult): InspectionRecord {
   const s = result.indexStatusResult ?? {};
-  return record(url, s.verdict ?? null, s.coverageState ?? null, s.indexingState ?? null, s.lastCrawlTime ?? null);
+  return record(
+    url,
+    s.verdict ?? null,
+    s.coverageState ?? null,
+    s.indexingState ?? null,
+    s.lastCrawlTime ?? null,
+  );
 }
 
 function toSitemap(s: ApiSitemap): Sitemap {

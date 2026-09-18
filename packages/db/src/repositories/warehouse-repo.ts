@@ -68,7 +68,12 @@ export class WarehouseRepository implements WarehouseRepo {
       anonymizedImpressions = anonymized.impressions;
     }
 
-    const covered = await this.#covered(q.propertyId, grainFor(q.dimension), q.searchType, q.period);
+    const covered = await this.#covered(
+      q.propertyId,
+      grainFor(q.dimension),
+      q.searchType,
+      q.period,
+    );
     return {
       rows,
       totals,
@@ -92,7 +97,10 @@ export class WarehouseRepository implements WarehouseRepo {
     ]);
     const toMap = (rows: readonly PerfRow[]) =>
       new Map<string, Fact>(
-        rows.map((r) => [r.key, { clicks: r.clicks, impressions: r.impressions, positionSum: r.positionSum }]),
+        rows.map((r) => [
+          r.key,
+          { clicks: r.clicks, impressions: r.impressions, positionSum: r.positionSum },
+        ]),
       );
     const ma = toMap(ra);
     const mb = toMap(rb);
@@ -135,13 +143,21 @@ export class WarehouseRepository implements WarehouseRepo {
       .from(factQueryPage)
       .innerJoin(
         dimQuery,
-        and(eq(dimQuery.id, factQueryPage.queryId), eq(dimQuery.propertyId, factQueryPage.propertyId)),
+        and(
+          eq(dimQuery.id, factQueryPage.queryId),
+          eq(dimQuery.propertyId, factQueryPage.propertyId),
+        ),
       )
       .innerJoin(
         dimPage,
         and(eq(dimPage.id, factQueryPage.pageId), eq(dimPage.propertyId, factQueryPage.propertyId)),
       )
-      .where(and(this.#dayRange(factQueryPage, propertyId, searchType, period), ne(factQueryPage.queryId, 0)))
+      .where(
+        and(
+          this.#dayRange(factQueryPage, propertyId, searchType, period),
+          ne(factQueryPage.queryId, 0),
+        ),
+      )
       .groupBy(dimQuery.text, dimPage.url, week)
       .limit(MAX_GROUPED_ROWS);
     return rows.map((r) => ({
@@ -207,8 +223,12 @@ export class WarehouseRepository implements WarehouseRepo {
       monthly: monthly.get(key) ?? [],
     }));
 
-    const siteRecent = (await this.#sumFacts(factTotals, propertyId, { from: recentFrom, to: anchor }, searchType)).clicks;
-    const sitePrior = (await this.#sumFacts(factTotals, propertyId, { from: priorFrom, to: priorTo }, searchType)).clicks;
+    const siteRecent = (
+      await this.#sumFacts(factTotals, propertyId, { from: recentFrom, to: anchor }, searchType)
+    ).clicks;
+    const sitePrior = (
+      await this.#sumFacts(factTotals, propertyId, { from: priorFrom, to: priorTo }, searchType)
+    ).clicks;
     const siteYoy = sitePrior === 0 ? 0 : (siteRecent - sitePrior) / sitePrior;
 
     return { pages, siteYoy };
@@ -239,7 +259,11 @@ export class WarehouseRepository implements WarehouseRepo {
     dimension: Dimension,
     period: Period,
     searchType: string,
-    opts: { sortBy?: "clicks" | "impressions" | "position"; limit?: number; queryContains?: string } = {},
+    opts: {
+      sortBy?: "clicks" | "impressions" | "position";
+      limit?: number;
+      queryContains?: string;
+    } = {},
   ): Promise<PerfRow[]> {
     const limit = opts.limit ?? MAX_GROUPED_ROWS;
     const sortBy = opts.sortBy ?? "clicks";
@@ -261,7 +285,13 @@ export class WarehouseRepository implements WarehouseRepo {
           dimQuery,
           and(eq(dimQuery.id, factQuery.queryId), eq(dimQuery.propertyId, factQuery.propertyId)),
         )
-        .where(and(this.#dayRange(factQuery, propertyId, searchType, period), ne(factQuery.queryId, 0), filter))
+        .where(
+          and(
+            this.#dayRange(factQuery, propertyId, searchType, period),
+            ne(factQuery.queryId, 0),
+            filter,
+          ),
+        )
         .groupBy(dimQuery.text)
         .orderBy(order)
         .limit(limit);
@@ -338,7 +368,9 @@ export class WarehouseRepository implements WarehouseRepo {
         positionSum: sql<number>`coalesce(sum(${factQuery.positionSum}), 0)::float8`,
       })
       .from(factQuery)
-      .where(and(this.#dayRange(factQuery, propertyId, searchType, period), eq(factQuery.queryId, 0)));
+      .where(
+        and(this.#dayRange(factQuery, propertyId, searchType, period), eq(factQuery.queryId, 0)),
+      );
     return {
       clicks: Number(r?.clicks ?? 0),
       impressions: Number(r?.impressions ?? 0),
@@ -347,14 +379,21 @@ export class WarehouseRepository implements WarehouseRepo {
   }
 
   /** Klicks je Seiten-URL in einem Zeitraum (für den Decay-YoY). */
-  async #pageClicks(propertyId: number, searchType: string, period: Period): Promise<Map<string, number>> {
+  async #pageClicks(
+    propertyId: number,
+    searchType: string,
+    period: Period,
+  ): Promise<Map<string, number>> {
     const rows = await this.#db
       .select({
         url: dimPage.url,
         clicks: sql<number>`coalesce(sum(${factPage.clicks}), 0)::float8`,
       })
       .from(factPage)
-      .innerJoin(dimPage, and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)))
+      .innerJoin(
+        dimPage,
+        and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)),
+      )
       .where(this.#dayRange(factPage, propertyId, searchType, period))
       .groupBy(dimPage.url)
       .limit(MAX_GROUPED_ROWS);
@@ -390,7 +429,12 @@ export class WarehouseRepository implements WarehouseRepo {
   }
 
   #dayRange(
-    table: typeof factTotals | typeof factQuery | typeof factPage | typeof factQueryPage | typeof factGeoDevice,
+    table:
+      | typeof factTotals
+      | typeof factQuery
+      | typeof factPage
+      | typeof factQueryPage
+      | typeof factGeoDevice,
     propertyId: number,
     searchType: string,
     period: Period,
@@ -447,7 +491,10 @@ export class WarehouseRepository implements WarehouseRepo {
         ctr: ctrExpr(factQuery),
       })
       .from(factQuery)
-      .leftJoin(dimQuery, and(eq(dimQuery.id, factQuery.queryId), eq(dimQuery.propertyId, factQuery.propertyId)))
+      .leftJoin(
+        dimQuery,
+        and(eq(dimQuery.id, factQuery.queryId), eq(dimQuery.propertyId, factQuery.propertyId)),
+      )
       .where(
         and(
           eq(factQuery.propertyId, propertyId),
@@ -480,9 +527,16 @@ export class WarehouseRepository implements WarehouseRepo {
         ctr: ctrExpr(factPage),
       })
       .from(factPage)
-      .innerJoin(dimPage, and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)))
+      .innerJoin(
+        dimPage,
+        and(eq(dimPage.id, factPage.pageId), eq(dimPage.propertyId, factPage.propertyId)),
+      )
       .where(
-        and(eq(factPage.propertyId, propertyId), gte(factPage.day, period.from), lte(factPage.day, period.to)),
+        and(
+          eq(factPage.propertyId, propertyId),
+          gte(factPage.day, period.from),
+          lte(factPage.day, period.to),
+        ),
       )
       .orderBy(asc(factPage.day))
       .limit(MAX_GROUPED_ROWS);
@@ -512,7 +566,10 @@ export class WarehouseRepository implements WarehouseRepo {
       .from(factQueryPage)
       .innerJoin(
         dimQuery,
-        and(eq(dimQuery.id, factQueryPage.queryId), eq(dimQuery.propertyId, factQueryPage.propertyId)),
+        and(
+          eq(dimQuery.id, factQueryPage.queryId),
+          eq(dimQuery.propertyId, factQueryPage.propertyId),
+        ),
       )
       .innerJoin(
         dimPage,
@@ -552,13 +609,16 @@ type FactTable =
 /** Sortierausdruck: Position ist impressionsgewichtet und aufsteigend (kleiner = besser). */
 function orderExpr(sortBy: "clicks" | "impressions" | "position", t: FactTable): SQL {
   if (sortBy === "impressions") return sql`sum(${t.impressions}) desc`;
-  if (sortBy === "position") return sql`sum(${t.positionSum}) / nullif(sum(${t.impressions}), 0) asc nulls last`;
+  if (sortBy === "position")
+    return sql`sum(${t.positionSum}) / nullif(sum(${t.impressions}), 0) asc nulls last`;
   return sql`sum(${t.clicks}) desc`;
 }
 
 /** Impressionsgewichtete Durchschnittsposition je Zeile, auf zwei Stellen gerundet. */
 function positionExpr(t: FactTable): SQL<number | null> {
-  return sql<number | null>`round((${t.positionSum} / nullif(${t.impressions}, 0))::numeric, 2)::float8`;
+  return sql<
+    number | null
+  >`round((${t.positionSum} / nullif(${t.impressions}, 0))::numeric, 2)::float8`;
 }
 
 /** CTR je Zeile (nie gespeichert, immer gerechnet), auf vier Stellen gerundet. */
@@ -566,7 +626,12 @@ function ctrExpr(t: FactTable): SQL<number | null> {
   return sql<number | null>`round((${t.clicks}::numeric / nullif(${t.impressions}, 0)), 4)::float8`;
 }
 
-function toPerfRow(r: { key: string; clicks: number; impressions: number; positionSum: number }): PerfRow {
+function toPerfRow(r: {
+  key: string;
+  clicks: number;
+  impressions: number;
+  positionSum: number;
+}): PerfRow {
   return {
     key: r.key,
     clicks: Number(r.clicks),

@@ -249,9 +249,7 @@ export const factQueryPage = wh.table(
     impressions: integer("impressions").notNull(),
     positionSum: doublePrecision("position_sum").notNull(),
   },
-  (t) => [
-    primaryKey({ columns: [t.propertyId, t.day, t.searchType, t.queryId, t.pageId] }),
-  ],
+  (t) => [primaryKey({ columns: [t.propertyId, t.day, t.searchType, t.queryId, t.pageId] })],
 );
 
 export const factGeoDevice = wh.table(
@@ -266,9 +264,7 @@ export const factGeoDevice = wh.table(
     impressions: integer("impressions").notNull(),
     positionSum: doublePrecision("position_sum").notNull(),
   },
-  (t) => [
-    primaryKey({ columns: [t.propertyId, t.day, t.searchType, t.country, t.device] }),
-  ],
+  (t) => [primaryKey({ columns: [t.propertyId, t.day, t.searchType, t.country, t.device] })],
 );
 
 export const factAppearance = wh.table(

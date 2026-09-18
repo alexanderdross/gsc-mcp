@@ -58,7 +58,9 @@ describe.skipIf(!PGURL)("WarehouseRepository (PostgreSQL)", () => {
          ($1,'aip',1,'2025-01-01','2026-08-16') RETURNING id, text`,
       [pid],
     );
-    const qId = new Map<string, number>(dq.rows.map((r: { text: string; id: string }) => [r.text, Number(r.id)]));
+    const qId = new Map<string, number>(
+      dq.rows.map((r: { text: string; id: string }) => [r.text, Number(r.id)]),
+    );
     const q1 = qId.get("aip germany")!; // "aip germany"
     const q2 = qId.get("aip")!;
 
@@ -68,7 +70,9 @@ describe.skipIf(!PGURL)("WarehouseRepository (PostgreSQL)", () => {
          ($1,'/vfr','/vfr',1,'2025-01-01','2026-08-16') RETURNING id, url`,
       [pid],
     );
-    const pId = new Map<string, number>(dp.rows.map((r: { url: string; id: string }) => [r.url, Number(r.id)]));
+    const pId = new Map<string, number>(
+      dp.rows.map((r: { url: string; id: string }) => [r.url, Number(r.id)]),
+    );
     const p1 = pId.get("/charts")!;
     const p2 = pId.get("/vfr")!;
 

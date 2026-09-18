@@ -3,7 +3,12 @@ import { buildDayFacts, syncDay, type GscDaySource, type FactWriter } from "../s
 import type { SearchAnalyticsRow } from "@gsc/gsc-client";
 
 const web = "web";
-const row = (keys: string[], clicks: number, impressions: number, position: number): SearchAnalyticsRow => ({
+const row = (
+  keys: string[],
+  clicks: number,
+  impressions: number,
+  position: number,
+): SearchAnalyticsRow => ({
   keys,
   clicks,
   impressions,
@@ -66,7 +71,11 @@ describe("syncDay", () => {
         return pageRows;
       },
     };
-    const written: { totals: number; queries: number; pages: number } = { totals: 0, queries: 0, pages: 0 };
+    const written: { totals: number; queries: number; pages: number } = {
+      totals: 0,
+      queries: 0,
+      pages: 0,
+    };
     const writer: FactWriter = {
       async writeTotals(_p, rows) {
         written.totals += rows.length;

@@ -123,7 +123,11 @@ export class McpServer {
       }
     } catch (err) {
       if (notification) return null;
-      return failure(id, RPC_ERROR.InternalError, err instanceof Error ? err.message : "Interner Fehler");
+      return failure(
+        id,
+        RPC_ERROR.InternalError,
+        err instanceof Error ? err.message : "Interner Fehler",
+      );
     }
   }
 

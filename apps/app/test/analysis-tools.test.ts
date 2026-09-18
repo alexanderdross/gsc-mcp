@@ -14,7 +14,13 @@ function prow(key: string, clicks: number, impressions: number, position: number
 function fakeRepo(over: Partial<WarehouseRepo>): WarehouseRepo {
   return {
     async performance(q) {
-      return { rows: [], totals: fact(0, 0, 0), anonymizedImpressions: 0, source: "warehouse", covered: q.period };
+      return {
+        rows: [],
+        totals: fact(0, 0, 0),
+        anonymizedImpressions: 0,
+        source: "warehouse",
+        covered: q.period,
+      };
     },
     async segmentPairs() {
       return [];
@@ -46,12 +52,20 @@ describe("striking_distance", () => {
   it("meldet Kandidaten mit Klickpotenzial aus den Query-Daten", async () => {
     const rows: PerfRow[] = [
       // Kurvenmaterial: gute CTR auf vorderen Positionen.
-      ...Array.from({ length: 20 }, (_, i) => prow(`k${i}`, Math.round(3000 / (i + 1)), 10_000, i + 1)),
+      ...Array.from({ length: 20 }, (_, i) =>
+        prow(`k${i}`, Math.round(3000 / (i + 1)), 10_000, i + 1),
+      ),
       prow("chance", 200, 8000, 12), // Position 12, viel Volumen, niedrige CTR
     ];
     const repo = fakeRepo({
       async performance(q) {
-        return { rows, totals: fact(0, 0, 0), anonymizedImpressions: 0, source: "warehouse", covered: q.period };
+        return {
+          rows,
+          totals: fact(0, 0, 0),
+          anonymizedImpressions: 0,
+          source: "warehouse",
+          covered: q.period,
+        };
       },
     });
     const res = await run(repo, "striking_distance", { from: "2026-08-01", to: "2026-08-16" });
@@ -118,11 +132,21 @@ describe("detect_anomalies", () => {
     const start = Date.UTC(2026, 5, 1);
     for (let i = 0; i < 56; i++) {
       const d = new Date(start + i * 86_400_000);
-      series.push({ date: d.toISOString().slice(0, 10), clicks: Math.round(1000 * mult[d.getUTCDay()]!) });
+      series.push({
+        date: d.toISOString().slice(0, 10),
+        clicks: Math.round(1000 * mult[d.getUTCDay()]!),
+      });
     }
     series[45] = { date: series[45]!.date, clicks: 300 };
-    const repo = fakeRepo({ async timeseries() { return series; } });
-    const res = await run(repo, "detect_anomalies", { from: series[0]!.date, to: series[55]!.date });
+    const repo = fakeRepo({
+      async timeseries() {
+        return series;
+      },
+    });
+    const res = await run(repo, "detect_anomalies", {
+      from: series[0]!.date,
+      to: series[55]!.date,
+    });
     if (res.kind !== "ok") throw new Error("erwartet ok");
     const out = res.output as { rows: Array<{ date: string; kind: string }> };
     expect(out.rows.some((a) => a.date === series[45]!.date && a.kind === "drop")).toBe(true);
@@ -139,7 +163,11 @@ describe("find_cannibalization", () => {
       { query: "charts", url: "/a", week: "2026-08-10", ...fact(12, 420, 8) },
       { query: "charts", url: "/b", week: "2026-08-17", ...fact(9, 380, 9) },
     ];
-    const repo = fakeRepo({ async cannibalizationRows() { return rows; } });
+    const repo = fakeRepo({
+      async cannibalizationRows() {
+        return rows;
+      },
+    });
     const res = await run(repo, "find_cannibalization", { from: "2026-08-01", to: "2026-08-17" });
     if (res.kind !== "ok") throw new Error("erwartet ok");
     const out = res.output as { rows: Array<{ query: string }> };
@@ -150,10 +178,24 @@ describe("find_cannibalization", () => {
 describe("content_decay", () => {
   it("meldet seitenspezifischen Verfall und reicht den Site-YoY durch", async () => {
     const pages: DecayInput[] = [
-      { key: "/verfall", recentClicks: 300, priorYearClicks: 1000, monthly: [1000, 800, 600, 400, 300] },
-      { key: "/stabil", recentClicks: 900, priorYearClicks: 1000, monthly: [1000, 950, 920, 910, 900] },
+      {
+        key: "/verfall",
+        recentClicks: 300,
+        priorYearClicks: 1000,
+        monthly: [1000, 800, 600, 400, 300],
+      },
+      {
+        key: "/stabil",
+        recentClicks: 900,
+        priorYearClicks: 1000,
+        monthly: [1000, 950, 920, 910, 900],
+      },
     ];
-    const repo = fakeRepo({ async decayInputs() { return { pages, siteYoy: -0.1 }; } });
+    const repo = fakeRepo({
+      async decayInputs() {
+        return { pages, siteYoy: -0.1 };
+      },
+    });
     const res = await run(repo, "content_decay", {});
     if (res.kind !== "ok") throw new Error("erwartet ok");
     const out = res.output as { siteYoy: number; rows: Array<{ key: string }> };
@@ -173,10 +215,20 @@ describe("ctr_analysis", () => {
     ];
     const repo = fakeRepo({
       async performance(q) {
-        return { rows, totals: fact(0, 0, 0), anonymizedImpressions: 0, source: "warehouse", covered: q.period };
+        return {
+          rows,
+          totals: fact(0, 0, 0),
+          anonymizedImpressions: 0,
+          source: "warehouse",
+          covered: q.period,
+        };
       },
     });
-    const res = await run(repo, "ctr_analysis", { from: "2026-08-01", to: "2026-08-16", scope: "page" });
+    const res = await run(repo, "ctr_analysis", {
+      from: "2026-08-01",
+      to: "2026-08-16",
+      scope: "page",
+    });
     if (res.kind !== "ok") throw new Error("erwartet ok");
     const out = res.output as { rows: Array<{ key: string }> };
     expect(out.rows.some((r) => r.key === "/schwach")).toBe(true);

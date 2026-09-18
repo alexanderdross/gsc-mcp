@@ -109,18 +109,28 @@ export function detectAnomalies(
       const rawBaseline = median(series.slice(i - window, i).map((p) => p.clicks));
       const clicks = series[i]!.clicks;
       const p =
-        kind === "drop"
-          ? poissonCdf(clicks, rawBaseline)
-          : 1 - poissonCdf(clicks - 1, rawBaseline);
+        kind === "drop" ? poissonCdf(clicks, rawBaseline) : 1 - poissonCdf(clicks - 1, rawBaseline);
       if (p < t.alpha) {
-        out.push({ date: series[i]!.date, value: clicks, expected: rawBaseline, z: null, deltaPct, kind });
+        out.push({
+          date: series[i]!.date,
+          value: clicks,
+          expected: rawBaseline,
+          z: null,
+          deltaPct,
+          kind,
+        });
       }
       continue;
     }
 
     const scale = robustScale(past);
     // Perfekt stabile Baseline (scale 0): jede reale Abweichung ist auffällig.
-    const z = scale > 0 ? (value - baseline) / scale : value === baseline ? 0 : Infinity * Math.sign(value - baseline);
+    const z =
+      scale > 0
+        ? (value - baseline) / scale
+        : value === baseline
+          ? 0
+          : Infinity * Math.sign(value - baseline);
     if (Math.abs(z) >= t.z) {
       out.push({ date: series[i]!.date, value, expected: baseline, z, deltaPct, kind });
     }

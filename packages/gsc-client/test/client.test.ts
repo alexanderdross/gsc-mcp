@@ -63,7 +63,15 @@ describe("GscClient", () => {
   });
 
   it("paginiert über mehrere Seiten bis zur Teilseite", async () => {
-    const client = new GscClient({ tokenProvider: async () => "x", fetchFn: async () => ({ ok: true, status: 200, json: async () => ({}), text: async () => "" }) });
+    const client = new GscClient({
+      tokenProvider: async () => "x",
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+        text: async () => "",
+      }),
+    });
     // Direkt die Pagination gegen einen Fake-Seitenabruf prüfen (pageSize 2).
     const pages = [
       [row("a"), row("b")],

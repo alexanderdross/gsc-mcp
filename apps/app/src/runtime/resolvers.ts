@@ -19,7 +19,13 @@ export function makeOwnershipCheck(db: Db): OwnershipCheck {
     const [row] = await db
       .select({ id: properties.id })
       .from(properties)
-      .where(and(eq(properties.id, propertyId), eq(properties.userId, userId), isNull(properties.deletedAt)))
+      .where(
+        and(
+          eq(properties.id, propertyId),
+          eq(properties.userId, userId),
+          isNull(properties.deletedAt),
+        ),
+      )
       .limit(1);
     return row !== undefined;
   };

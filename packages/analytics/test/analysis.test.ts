@@ -26,7 +26,12 @@ const curve = fitCtrCurve(
   Array.from({ length: 30 }, (_, i): CtrObservation => {
     const position = i + 1;
     const impressions = 10_000;
-    return { position, impressions, clicks: Math.round(impressions * (0.35 / position)), positionSum: position * impressions };
+    return {
+      position,
+      impressions,
+      clicks: Math.round(impressions * (0.35 / position)),
+      positionSum: position * impressions,
+    };
   }),
 );
 
@@ -89,7 +94,9 @@ describe("brandSplit", () => {
     expect(split.nonBrand.clicks).toBe(40);
     expect(split.unassigned.impressions).toBe(20_000);
     const shareSum =
-      split.brand.impressionShare + split.nonBrand.impressionShare + split.unassigned.impressionShare;
+      split.brand.impressionShare +
+      split.nonBrand.impressionShare +
+      split.unassigned.impressionShare;
     expect(shareSum).toBeCloseTo(1, 9);
   });
 });
@@ -97,8 +104,18 @@ describe("brandSplit", () => {
 describe("contentDecay", () => {
   it("meldet nur seitenspezifischen, nicht saisonalen Verfall mit fallendem Trend", () => {
     const pages = [
-      { key: "verfall", recentClicks: 300, priorYearClicks: 1000, monthly: [1000, 800, 600, 400, 300] },
-      { key: "saisonal", recentClicks: 850, priorYearClicks: 1000, monthly: [1000, 950, 900, 880, 850] },
+      {
+        key: "verfall",
+        recentClicks: 300,
+        priorYearClicks: 1000,
+        monthly: [1000, 800, 600, 400, 300],
+      },
+      {
+        key: "saisonal",
+        recentClicks: 850,
+        priorYearClicks: 1000,
+        monthly: [1000, 950, 900, 880, 850],
+      },
       { key: "zu-klein", recentClicks: 10, priorYearClicks: 50, monthly: [50, 30, 10] },
     ];
     // Site verlor 10 % → 'saisonal' folgt nur dem Site-Trend, 'verfall' fällt stärker.

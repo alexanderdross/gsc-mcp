@@ -1,0 +1,39 @@
+name: CodeQL
+
+# Statische Sicherheits- und Qualitätsanalyse für JS/TS. Läuft bei jedem
+# Push/PR sowie wöchentlich, damit neu bekannt gewordene Muster auch ohne
+# frische Änderung erkannt werden.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "27 3 * * 1"
+
+jobs:
+  analyze:
+    name: Analyse
+    runs-on: [self-hosted, linux]
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      # Der TypeScript-Extractor von CodeQL benötigt 'node' auf dem PATH.
+      # GitHub-gehostete Runner haben Node vorinstalliert; der self-hosted
+      # Runner nicht — daher hier bereitstellen, sonst bricht die Extraktion
+      # mit "Could not start Node.js" ab.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: CodeQL initialisieren
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+      - name: Analyse ausführen
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"

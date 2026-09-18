@@ -30,7 +30,10 @@ export function encodeSseEvent(data: string, opts: { id?: string; event?: string
 }
 
 /** Kodiert eine JSON-RPC-Nachricht als SSE-Ereignis. */
-export function encodeMessage(message: unknown, opts: { id?: string; event?: string } = {}): string {
+export function encodeMessage(
+  message: unknown,
+  opts: { id?: string; event?: string } = {},
+): string {
   return encodeSseEvent(JSON.stringify(message), opts);
 }
 

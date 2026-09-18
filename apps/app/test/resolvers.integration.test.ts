@@ -27,8 +27,12 @@ describe.skipIf(!PGURL)("DB-Resolver (PostgreSQL)", () => {
     ({ db, pool } = createDb({ url: PGURL!, maxConnections: 4 }));
     await pool.query("DROP SCHEMA IF EXISTS core CASCADE; DROP SCHEMA IF EXISTS wh CASCADE;");
     await pool.query(migration);
-    const a = await pool.query("INSERT INTO core.users (public_id, google_sub, email) VALUES ('ua','sa','a@b.de') RETURNING id");
-    const b = await pool.query("INSERT INTO core.users (public_id, google_sub, email) VALUES ('ub','sb','b@b.de') RETURNING id");
+    const a = await pool.query(
+      "INSERT INTO core.users (public_id, google_sub, email) VALUES ('ua','sa','a@b.de') RETURNING id",
+    );
+    const b = await pool.query(
+      "INSERT INTO core.users (public_id, google_sub, email) VALUES ('ub','sb','b@b.de') RETURNING id",
+    );
     userA = Number(a.rows[0].id);
     userB = Number(b.rows[0].id);
     const p = await pool.query(

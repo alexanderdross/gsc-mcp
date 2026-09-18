@@ -86,7 +86,11 @@ export interface WarehouseRepo {
   ): Promise<readonly SegmentPair[]>;
 
   /** Tägliche Klick-Zeitreihe — Grundlage von detect_anomalies. */
-  timeseries(propertyId: number, period: Period, searchType: string): Promise<readonly SeriesPoint[]>;
+  timeseries(
+    propertyId: number,
+    period: Period,
+    searchType: string,
+  ): Promise<readonly SeriesPoint[]>;
 
   /** Query×URL×Woche-Zeilen — Grundlage von find_cannibalization. */
   cannibalizationRows(

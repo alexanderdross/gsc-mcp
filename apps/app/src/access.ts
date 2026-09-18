@@ -7,9 +7,10 @@
 import { PLANS, allowsAnalysis, type Plan } from "@gsc/core";
 import type { Requirement } from "./tool.ts";
 
-const RANK: Record<Plan, number> = Object.fromEntries(
-  PLANS.map((p, i) => [p, i]),
-) as Record<Plan, number>;
+const RANK: Record<Plan, number> = Object.fromEntries(PLANS.map((p, i) => [p, i])) as Record<
+  Plan,
+  number
+>;
 
 export function planRank(plan: Plan): number {
   return RANK[plan];

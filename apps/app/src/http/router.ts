@@ -53,7 +53,10 @@ export class HttpRouter {
       try {
         body = req.body ? JSON.parse(req.body) : {};
       } catch {
-        return json(400, { error: "invalid_client_metadata", error_description: "Ungültiges JSON." });
+        return json(400, {
+          error: "invalid_client_metadata",
+          error_description: "Ungültiges JSON.",
+        });
       }
       const res = await registerClient(body as Record<string, unknown>, this.#d.registration);
       return json(res.status, res.body);

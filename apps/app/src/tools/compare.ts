@@ -30,7 +30,10 @@ export function makeComparePeriods(repo: WarehouseRepo) {
       .strict(),
     requires: { needsProperty: true, analysisTool: "compare_periods" },
     async handler(ctx, input) {
-      const cap = Math.min(input.limit ?? rowCap(ctx.plan, ctx.detail), rowCap(ctx.plan, ctx.detail));
+      const cap = Math.min(
+        input.limit ?? rowCap(ctx.plan, ctx.detail),
+        rowCap(ctx.plan, ctx.detail),
+      );
       const pairs = await repo.segmentPairs(
         ctx.propertyId!,
         input.dimension as Dimension,

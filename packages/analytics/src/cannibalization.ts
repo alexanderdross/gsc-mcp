@@ -60,7 +60,9 @@ export function findCannibalization(
     const urlFacts = new Map<string, Fact>();
     for (const [url, facts] of byUrl) urlFacts.set(url, sumFacts(facts));
 
-    const qualifyingUrls = [...urlFacts.entries()].filter(([, f]) => f.impressions >= minImpressions);
+    const qualifyingUrls = [...urlFacts.entries()].filter(
+      ([, f]) => f.impressions >= minImpressions,
+    );
     if (qualifyingUrls.length < minUrls) continue;
 
     const total = sumFacts([...urlFacts.values()]);

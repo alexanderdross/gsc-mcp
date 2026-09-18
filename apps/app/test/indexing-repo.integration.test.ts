@@ -43,7 +43,13 @@ function fakeClient() {
       calls.listSitemaps++;
       payload = {
         sitemap: [
-          { path: "https://example.com/sitemap.xml", isPending: false, isSitemapsIndex: true, warnings: "2", errors: "0" },
+          {
+            path: "https://example.com/sitemap.xml",
+            isPending: false,
+            isSitemapsIndex: true,
+            warnings: "2",
+            errors: "0",
+          },
         ],
       };
     } else if (init.method === "PUT") {
@@ -102,13 +108,20 @@ describe.skipIf(!PGURL)("IndexingRepository (PostgreSQL + Fake-GSC-Client)", () 
          ($1,'https://example.com/c','/c',1,'2026-07-01','2026-08-16') RETURNING id, url`,
       [pid],
     );
-    const pageId = new Map<string, number>(dp.rows.map((r: { url: string; id: string }) => [r.url, Number(r.id)]));
+    const pageId = new Map<string, number>(
+      dp.rows.map((r: { url: string; id: string }) => [r.url, Number(r.id)]),
+    );
     await pool.query(
       `INSERT INTO wh.fact_page (property_id, day, search_type, page_id, clicks, impressions, position_sum) VALUES
          ($1,'2026-08-16','web',$2,900,10000,10000*3),
          ($1,'2026-08-16','web',$3,300,4000,4000*5),
          ($1,'2026-08-16','web',$4,50,800,800*9)`,
-      [pid, pageId.get("https://example.com/a"), pageId.get("https://example.com/b"), pageId.get("https://example.com/c")],
+      [
+        pid,
+        pageId.get("https://example.com/a"),
+        pageId.get("https://example.com/b"),
+        pageId.get("https://example.com/c"),
+      ],
     );
 
     // Eine gespeicherte Inspektion (für inspectionRecords und den Cache-Treffer).
@@ -189,7 +202,13 @@ describe.skipIf(!PGURL)("IndexingRepository (PostgreSQL + Fake-GSC-Client)", () 
     const maps = await repo.listSitemaps(pid);
     expect(calls.listSitemaps).toBe(1);
     expect(maps).toEqual([
-      { path: "https://example.com/sitemap.xml", isPending: false, isIndex: true, warnings: 2, errors: 0 },
+      {
+        path: "https://example.com/sitemap.xml",
+        isPending: false,
+        isIndex: true,
+        warnings: 2,
+        errors: 0,
+      },
     ]);
   });
 
@@ -205,6 +224,8 @@ describe.skipIf(!PGURL)("IndexingRepository (PostgreSQL + Fake-GSC-Client)", () 
     const repo = new IndexingRepository({ db, client, queue: fakeQueue(), dailyBudget: 5 });
     const records = await repo.inspectionRecords(pid);
     expect(records.length).toBeGreaterThanOrEqual(1);
-    expect(records.some((r) => r.url === "https://example.com/a" && r.verdict === "PASS")).toBe(true);
+    expect(records.some((r) => r.url === "https://example.com/a" && r.verdict === "PASS")).toBe(
+      true,
+    );
   });
 });

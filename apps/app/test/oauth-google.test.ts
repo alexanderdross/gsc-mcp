@@ -39,12 +39,20 @@ describe("GoogleOAuth.authorizeUrl", () => {
 });
 
 describe("GoogleOAuth.exchange", () => {
-  function fetchReturning(status: number, payload: unknown): { fetchFn: FetchFn; seen: { url?: string; body?: string } } {
+  function fetchReturning(
+    status: number,
+    payload: unknown,
+  ): { fetchFn: FetchFn; seen: { url?: string; body?: string } } {
     const seen: { url?: string; body?: string } = {};
     const fetchFn: FetchFn = async (url, init) => {
       seen.url = url;
       seen.body = init.body;
-      return { ok: status >= 200 && status < 300, status, json: async () => payload, text: async () => JSON.stringify(payload) };
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => payload,
+        text: async () => JSON.stringify(payload),
+      };
     };
     return { fetchFn, seen };
   }
@@ -56,7 +64,12 @@ describe("GoogleOAuth.exchange", () => {
       id_token: jwt({ sub: "sub-9", email: "seo@aip.aero" }),
       scope: "openid email https://www.googleapis.com/auth/webmasters.readonly",
     });
-    const g = new GoogleOAuth({ clientId: "cid", clientSecret: "sec", redirectUri: "https://x/cb", fetchFn });
+    const g = new GoogleOAuth({
+      clientId: "cid",
+      clientSecret: "sec",
+      redirectUri: "https://x/cb",
+      fetchFn,
+    });
     const identity = await g.exchange("auth-code");
 
     expect(identity.googleSub).toBe("sub-9");
@@ -71,13 +84,23 @@ describe("GoogleOAuth.exchange", () => {
 
   it("wirft bei Fehlerstatus", async () => {
     const { fetchFn } = fetchReturning(400, { error: "invalid_grant" });
-    const g = new GoogleOAuth({ clientId: "cid", clientSecret: "sec", redirectUri: "https://x/cb", fetchFn });
+    const g = new GoogleOAuth({
+      clientId: "cid",
+      clientSecret: "sec",
+      redirectUri: "https://x/cb",
+      fetchFn,
+    });
     await expect(g.exchange("bad")).rejects.toThrow();
   });
 
   it("wirft ohne id_token", async () => {
     const { fetchFn } = fetchReturning(200, { access_token: "a", scope: "openid" });
-    const g = new GoogleOAuth({ clientId: "cid", clientSecret: "sec", redirectUri: "https://x/cb", fetchFn });
+    const g = new GoogleOAuth({
+      clientId: "cid",
+      clientSecret: "sec",
+      redirectUri: "https://x/cb",
+      fetchFn,
+    });
     await expect(g.exchange("code")).rejects.toThrow();
   });
 });

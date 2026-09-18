@@ -33,13 +33,7 @@ function fakeRepo(data: {
         }
       );
     },
-    async segmentPairs(
-      _p: number,
-      _d: Dimension,
-      _a: Period,
-      _b: Period,
-      _st: string,
-    ) {
+    async segmentPairs(_p: number, _d: Dimension, _a: Period, _b: Period, _st: string) {
       return data.pairs ?? [];
     },
     async timeseries() {
@@ -151,11 +145,10 @@ describe("compare_periods", () => {
 
   it("ist für Starter gesperrt (vollständige Analyse ab Pro)", async () => {
     const router = new Router(buildRegistry({ repo: fakeRepo({}) }), { ownershipCheck: owns });
-    const res = await router.run(
-      { plan: "starter", userId: 1, propertyId: 7 },
-      "compare_periods",
-      { a: { from: "2026-07-01", to: "2026-07-31" }, b: { from: "2026-08-01", to: "2026-08-31" } },
-    );
+    const res = await router.run({ plan: "starter", userId: 1, propertyId: 7 }, "compare_periods", {
+      a: { from: "2026-07-01", to: "2026-07-31" },
+      b: { from: "2026-08-01", to: "2026-08-31" },
+    });
     expect(res.kind).toBe("denied");
   });
 });
@@ -168,7 +161,9 @@ describe("top_movers", () => {
   ];
 
   it("rankt nach Betrag der Klickveränderung und filtert Rauschen", async () => {
-    const router = new Router(buildRegistry({ repo: fakeRepo({ pairs }) }), { ownershipCheck: owns });
+    const router = new Router(buildRegistry({ repo: fakeRepo({ pairs }) }), {
+      ownershipCheck: owns,
+    });
     const res = await router.run(
       { plan: "pro", userId: 1, propertyId: 7, detail: "standard" },
       "top_movers",
@@ -186,32 +181,28 @@ describe("top_movers", () => {
   });
 
   it("filtert nach Richtung: nur Verbesserungen", async () => {
-    const router = new Router(buildRegistry({ repo: fakeRepo({ pairs }) }), { ownershipCheck: owns });
-    const res = await router.run(
-      { plan: "pro", userId: 1, propertyId: 7 },
-      "top_movers",
-      {
-        a: { from: "2026-07-01", to: "2026-07-31" },
-        b: { from: "2026-08-01", to: "2026-08-31" },
-        metric: "clicks",
-        direction: "up",
-      },
-    );
+    const router = new Router(buildRegistry({ repo: fakeRepo({ pairs }) }), {
+      ownershipCheck: owns,
+    });
+    const res = await router.run({ plan: "pro", userId: 1, propertyId: 7 }, "top_movers", {
+      a: { from: "2026-07-01", to: "2026-07-31" },
+      b: { from: "2026-08-01", to: "2026-08-31" },
+      metric: "clicks",
+      direction: "up",
+    });
     if (res.kind !== "ok") throw new Error("erwartet ok");
     const out = res.output as { rows: Array<{ key: string }> };
     expect(out.rows.map((r) => r.key)).toEqual(["gewinner"]);
   });
 
   it("ist für Free gesperrt (Basis-Analyse ab Starter)", async () => {
-    const router = new Router(buildRegistry({ repo: fakeRepo({ pairs }) }), { ownershipCheck: owns });
-    const res = await router.run(
-      { plan: "free", userId: 1, propertyId: 7 },
-      "top_movers",
-      {
-        a: { from: "2026-07-01", to: "2026-07-31" },
-        b: { from: "2026-08-01", to: "2026-08-31" },
-      },
-    );
+    const router = new Router(buildRegistry({ repo: fakeRepo({ pairs }) }), {
+      ownershipCheck: owns,
+    });
+    const res = await router.run({ plan: "free", userId: 1, propertyId: 7 }, "top_movers", {
+      a: { from: "2026-07-01", to: "2026-07-31" },
+      b: { from: "2026-08-01", to: "2026-08-31" },
+    });
     expect(res.kind).toBe("denied");
   });
 });

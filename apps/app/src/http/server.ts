@@ -42,7 +42,11 @@ export function createHttpServer(router: HttpRouter): Server {
   });
 }
 
-async function dispatch(router: HttpRouter, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function dispatch(
+  router: HttpRouter,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   try {
     const body = await readBody(req);
     const url = new URL(req.url ?? "/", "http://localhost");

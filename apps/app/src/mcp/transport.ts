@@ -28,7 +28,11 @@ function receiveInContext(
   session: Session,
 ): Promise<JsonRpcResponse | null> {
   return withRequestContext(
-    { userId: session.userId, plan: session.plan, ...(session.propertyId === undefined ? {} : { propertyId: session.propertyId }) },
+    {
+      userId: session.userId,
+      plan: session.plan,
+      ...(session.propertyId === undefined ? {} : { propertyId: session.propertyId }),
+    },
     () => server.receive(rpc, session),
   );
 }
@@ -62,7 +66,10 @@ export class McpEndpoint {
   }
 
   /** POST /mcp — eine JSON-RPC-Nachricht (Batches sind ab MCP 2025-06-18 unzulässig). */
-  async post(rawBody: string, headers: Readonly<Record<string, string>> = {}): Promise<HttpResponse> {
+  async post(
+    rawBody: string,
+    headers: Readonly<Record<string, string>> = {},
+  ): Promise<HttpResponse> {
     const h = lower(headers);
 
     let parsed: unknown;
@@ -72,18 +79,25 @@ export class McpEndpoint {
       return json(400, failure(null, RPC_ERROR.ParseError, "Ungültiges JSON."));
     }
     if (Array.isArray(parsed)) {
-      return json(400, failure(null, RPC_ERROR.InvalidRequest, "Batches sind nicht unterstützt (MCP 2025-06-18)."));
+      return json(
+        400,
+        failure(null, RPC_ERROR.InvalidRequest, "Batches sind nicht unterstützt (MCP 2025-06-18)."),
+      );
     }
     const rpc = asRequest(parsed);
     if (!rpc) {
-      return json(400, failure(null, RPC_ERROR.InvalidRequest, "Keine gültige JSON-RPC-2.0-Nachricht."));
+      return json(
+        400,
+        failure(null, RPC_ERROR.InvalidRequest, "Keine gültige JSON-RPC-2.0-Nachricht."),
+      );
     }
     const id = rpc.id ?? null;
 
     // initialize begründet die Sitzung; die Session-Id wird im Response-Header gesetzt.
     if (rpc.method === "initialize") {
       const session = await this.#authenticate(h);
-      if (!session) return json(401, failure(id, RPC_ERROR.InvalidRequest, "Nicht authentifiziert."));
+      if (!session)
+        return json(401, failure(id, RPC_ERROR.InvalidRequest, "Nicht authentifiziert."));
       const mcp = await this.#store.create(session);
       const response = await receiveInContext(this.#server, rpc, session);
       return json(200, response, mcp.id);

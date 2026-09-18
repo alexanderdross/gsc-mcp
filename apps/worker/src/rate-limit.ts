@@ -39,12 +39,7 @@ export interface TakeResult {
  * Versucht, `count` Token zu entnehmen. Gewährt und zieht ab, wenn genug da sind;
  * andernfalls unverändert plus Angabe, wie lange bis zur Verfügbarkeit zu warten ist.
  */
-export function take(
-  state: BucketState,
-  config: BucketConfig,
-  now: number,
-  count = 1,
-): TakeResult {
+export function take(state: BucketState, config: BucketConfig, now: number, count = 1): TakeResult {
   const filled = refill(state, config, now);
   if (filled.tokens >= count) {
     return {

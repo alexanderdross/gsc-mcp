@@ -71,13 +71,13 @@ export async function main(env: Record<string, string | undefined> = process.env
     });
   });
 
-  // eslint-disable-next-line no-console — Startmeldung des Workers
+  // eslint-disable-next-line no-console -- Startmeldung des Workers
   console.log("gsc-mcp Sync-Worker läuft (Queue: inspect-urls).");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err: unknown) => {
-    // eslint-disable-next-line no-console — Startfehler
+    // eslint-disable-next-line no-console -- Startfehler
     console.error(err);
     process.exitCode = 1;
   });
