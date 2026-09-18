@@ -21,6 +21,13 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+      # Der TypeScript-Extractor von CodeQL benötigt 'node' auf dem PATH.
+      # GitHub-gehostete Runner haben Node vorinstalliert; der self-hosted
+      # Runner nicht — daher hier bereitstellen, sonst bricht die Extraktion
+      # mit "Could not start Node.js" ab.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: CodeQL initialisieren
         uses: github/codeql-action/init@v3
         with:
