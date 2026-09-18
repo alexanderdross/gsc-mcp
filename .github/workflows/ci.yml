@@ -1,5 +1,12 @@
 name: CI
 
+# Läuft auf dem eigenen self-hosted Runner (netcup, Linux), nicht auf
+# GitHub-gehosteten Runnern. Voraussetzungen auf dem Runner:
+#   - Labels "self-hosted" und "linux" (Standard-Labels eines Linux-Runners),
+#   - Docker (für den PostgreSQL-Service-Container im ddl-Job),
+#   - sudo + apt (postgresql-client sowie Playwright-Systemabhängigkeiten).
+# Node stellt actions/setup-node bereit.
+
 on:
   push:
     branches: ["**"]
@@ -8,7 +15,7 @@ on:
 jobs:
   build:
     name: Typecheck und Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +28,7 @@ jobs:
 
   lint:
     name: Lint und Formatierung
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,7 +43,7 @@ jobs:
 
   audit:
     name: Dependency-Audit
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     # Informativ: meldet bekannte Schwachstellen, blockiert die CI aber nicht.
     # Die eigentliche Behebung fährt Dependabot (siehe .github/dependabot.yml).
     continue-on-error: true
@@ -52,7 +59,7 @@ jobs:
 
   ddl:
     name: DDL gegen PostgreSQL
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     services:
       postgres:
         image: postgres:17
@@ -86,7 +93,7 @@ jobs:
 
   docs:
     name: Dokumente und Artefakt-Seite
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -96,7 +103,7 @@ jobs:
 
   render:
     name: Artefakt-Seite rendern
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
