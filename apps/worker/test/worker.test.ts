@@ -79,11 +79,7 @@ describe("planBackfill", () => {
 
   it("holt per-Tag-Grains mit jüngstem Tag zuerst", () => {
     const query = jobs.filter((j) => j.grain === "query");
-    expect(query.map((j) => j.dateFrom)).toEqual([
-      "2026-08-03",
-      "2026-08-02",
-      "2026-08-01",
-    ]);
+    expect(query.map((j) => j.dateFrom)).toEqual(["2026-08-03", "2026-08-02", "2026-08-01"]);
   });
 
   it("vergibt Backfill-Priorität und aufsteigende seq", () => {
@@ -131,22 +127,26 @@ describe("Bulk-Export-Transformationen", () => {
   });
 
   it("schiebt anonymisierte Anfragen in den Sammelposten", () => {
-    expect(toQueryFact({
-      query: null,
-      isAnonymizedQuery: true,
-      url: "https://x/",
-      clicks: 3,
-      impressions: 30,
-      sumTopPosition: 60,
-    }).queryText).toBeNull();
+    expect(
+      toQueryFact({
+        query: null,
+        isAnonymizedQuery: true,
+        url: "https://x/",
+        clicks: 3,
+        impressions: 30,
+        sumTopPosition: 60,
+      }).queryText,
+    ).toBeNull();
 
-    expect(toQueryFact({
-      query: "aip germany",
-      isAnonymizedQuery: false,
-      url: "https://x/",
-      clicks: 9,
-      impressions: 90,
-      sumTopPosition: 90,
-    }).queryText).toBe("aip germany");
+    expect(
+      toQueryFact({
+        query: "aip germany",
+        isAnonymizedQuery: false,
+        url: "https://x/",
+        clicks: 9,
+        impressions: 90,
+        sumTopPosition: 90,
+      }).queryText,
+    ).toBe("aip germany");
   });
 });

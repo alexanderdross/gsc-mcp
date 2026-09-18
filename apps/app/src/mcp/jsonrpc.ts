@@ -48,7 +48,12 @@ export function success(id: JsonRpcId, result: unknown): JsonRpcSuccess {
   return { jsonrpc: JSONRPC_VERSION, id, result };
 }
 
-export function failure(id: JsonRpcId, code: number, message: string, data?: unknown): JsonRpcFailure {
+export function failure(
+  id: JsonRpcId,
+  code: number,
+  message: string,
+  data?: unknown,
+): JsonRpcFailure {
   return {
     jsonrpc: JSONRPC_VERSION,
     id,

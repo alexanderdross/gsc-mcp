@@ -60,6 +60,8 @@ export function loadConfig(env: Record<string, string | undefined>): AppConfig {
       clientSecret: required(env, "GOOGLE_CLIENT_SECRET"),
       redirectUri: env.GOOGLE_REDIRECT_URI ?? `${issuer}/oauth/google/callback`,
     },
-    googleScopes: env.GOOGLE_SCOPES ? env.GOOGLE_SCOPES.split(/\s+/).filter(Boolean) : DEFAULT_SCOPES,
+    googleScopes: env.GOOGLE_SCOPES
+      ? env.GOOGLE_SCOPES.split(/\s+/).filter(Boolean)
+      : DEFAULT_SCOPES,
   };
 }

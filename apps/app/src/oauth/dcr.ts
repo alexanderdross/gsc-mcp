@@ -40,7 +40,8 @@ export function isValidRedirectUri(value: string): boolean {
   }
   if (url.hash !== "") return false; // Fragmente sind unzulässig
   if (url.protocol === "https:") return true;
-  if (url.protocol === "http:") return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1";
+  if (url.protocol === "http:")
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1";
   return false;
 }
 
@@ -65,7 +66,11 @@ export async function registerClient(
 
   const authMethod = req.token_endpoint_auth_method ?? "none";
   if (!AUTH_METHODS.has(authMethod)) {
-    return error(400, "invalid_client_metadata", `Unbekannte token_endpoint_auth_method: ${authMethod}`);
+    return error(
+      400,
+      "invalid_client_metadata",
+      `Unbekannte token_endpoint_auth_method: ${authMethod}`,
+    );
   }
 
   const grantTypes = req.grant_types ?? ["authorization_code", "refresh_token"];

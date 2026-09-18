@@ -95,10 +95,7 @@ export interface Attribution {
  * @param limit optionale Kürzung auf die N stärksten Beiträge; die übrigen werden
  *   als Sammelposten mit key `__other__` zusammengefasst, damit die Summe erhalten bleibt.
  */
-export function attributeBySegment(
-  segments: readonly SegmentInput[],
-  limit?: number,
-): Attribution {
+export function attributeBySegment(segments: readonly SegmentInput[], limit?: number): Attribution {
   const all: SegmentContribution[] = segments.map((s) => ({
     key: s.key,
     ...decompose(s.a, s.b),

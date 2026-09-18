@@ -1,16 +1,66 @@
 import { describe, it, expect } from "vitest";
-import { aggregateQueryFacts, aggregatePageFacts, toPositionSum, type UrlImpressionRow } from "../src/index.ts";
+import {
+  aggregateQueryFacts,
+  aggregatePageFacts,
+  toPositionSum,
+  type UrlImpressionRow,
+} from "../src/index.ts";
 
 const web = "web";
 
 /** url_impression-Zeilen eines Tages: zwei Queries auf zwei Seiten, plus anonymisiert. */
 const rows: UrlImpressionRow[] = [
-  { day: "2026-08-16", searchType: web, query: "aip", isAnonymizedQuery: false, url: "/a", clicks: 10, impressions: 100, sumTopPosition: 200 },
-  { day: "2026-08-16", searchType: web, query: "aip", isAnonymizedQuery: false, url: "/b", clicks: 5, impressions: 50, sumTopPosition: 150 },
-  { day: "2026-08-16", searchType: web, query: "aip germany", isAnonymizedQuery: false, url: "/a", clicks: 20, impressions: 300, sumTopPosition: 600 },
+  {
+    day: "2026-08-16",
+    searchType: web,
+    query: "aip",
+    isAnonymizedQuery: false,
+    url: "/a",
+    clicks: 10,
+    impressions: 100,
+    sumTopPosition: 200,
+  },
+  {
+    day: "2026-08-16",
+    searchType: web,
+    query: "aip",
+    isAnonymizedQuery: false,
+    url: "/b",
+    clicks: 5,
+    impressions: 50,
+    sumTopPosition: 150,
+  },
+  {
+    day: "2026-08-16",
+    searchType: web,
+    query: "aip germany",
+    isAnonymizedQuery: false,
+    url: "/a",
+    clicks: 20,
+    impressions: 300,
+    sumTopPosition: 600,
+  },
   // anonymisiert: kein Text → Sammelposten
-  { day: "2026-08-16", searchType: web, query: null, isAnonymizedQuery: true, url: "/a", clicks: 3, impressions: 30, sumTopPosition: 90 },
-  { day: "2026-08-16", searchType: web, query: "", isAnonymizedQuery: false, url: "/c", clicks: 2, impressions: 20, sumTopPosition: 40 },
+  {
+    day: "2026-08-16",
+    searchType: web,
+    query: null,
+    isAnonymizedQuery: true,
+    url: "/a",
+    clicks: 3,
+    impressions: 30,
+    sumTopPosition: 90,
+  },
+  {
+    day: "2026-08-16",
+    searchType: web,
+    query: "",
+    isAnonymizedQuery: false,
+    url: "/c",
+    clicks: 2,
+    impressions: 20,
+    sumTopPosition: 40,
+  },
 ];
 
 describe("aggregateQueryFacts", () => {
@@ -37,7 +87,10 @@ describe("aggregateQueryFacts", () => {
   it("die Summe aller Query-Fakten entspricht der Summe der Rohzeilen (Abstimmung)", () => {
     const facts = aggregateQueryFacts(rows);
     const sum = (arr: readonly { clicks: number; impressions: number }[]) =>
-      arr.reduce((s, r) => ({ clicks: s.clicks + r.clicks, impressions: s.impressions + r.impressions }), { clicks: 0, impressions: 0 });
+      arr.reduce(
+        (s, r) => ({ clicks: s.clicks + r.clicks, impressions: s.impressions + r.impressions }),
+        { clicks: 0, impressions: 0 },
+      );
     expect(sum(facts)).toEqual(sum(rows));
   });
 });

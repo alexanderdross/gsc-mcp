@@ -21,7 +21,12 @@ describe("GoogleOAuth.refreshAccessToken", () => {
         text: async () => "",
       };
     };
-    const g = new GoogleOAuth({ clientId: "cid", clientSecret: "sec", redirectUri: "https://x/cb", fetchFn });
+    const g = new GoogleOAuth({
+      clientId: "cid",
+      clientSecret: "sec",
+      redirectUri: "https://x/cb",
+      fetchFn,
+    });
     const res = await g.refreshAccessToken("1//refresh");
     expect(res.accessToken).toBe("ya29.neu");
     expect(res.expiresInSec).toBe(3599);
@@ -46,7 +51,12 @@ describe("GoogleTokenProvider", () => {
         return encryptSecret("1//refresh", key);
       },
     };
-    const provider = new GoogleTokenProvider({ refresher, credentials, encryptionKey: key, now: () => clock.t });
+    const provider = new GoogleTokenProvider({
+      refresher,
+      credentials,
+      encryptionKey: key,
+      now: () => clock.t,
+    });
     return { provider, refreshCount: () => calls };
   }
 
@@ -78,8 +88,16 @@ describe("GoogleTokenProvider", () => {
 
   it("wirft ohne verknüpfte Google-Credentials", async () => {
     const provider = new GoogleTokenProvider({
-      refresher: { async refreshAccessToken() { return { accessToken: "x", expiresInSec: 1 }; } },
-      credentials: { async getRefreshToken() { return null; } },
+      refresher: {
+        async refreshAccessToken() {
+          return { accessToken: "x", expiresInSec: 1 };
+        },
+      },
+      credentials: {
+        async getRefreshToken() {
+          return null;
+        },
+      },
       encryptionKey: key,
     });
     await expect(provider.forUser(99)).rejects.toThrow();

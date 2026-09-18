@@ -81,7 +81,10 @@ describe("Dynamic Client Registration", () => {
   it("öffentlicher Client (PKCE) bekommt kein Secret", async () => {
     const d = deps();
     const res = await registerClient(
-      { redirect_uris: ["https://claude.ai/api/mcp/auth_callback"], token_endpoint_auth_method: "none" },
+      {
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+        token_endpoint_auth_method: "none",
+      },
       d,
     );
     expect(res.status).toBe(201);
@@ -93,7 +96,10 @@ describe("Dynamic Client Registration", () => {
 
   it("vertraulicher Client bekommt ein Secret", async () => {
     const res = await registerClient(
-      { redirect_uris: ["https://app.example.com/cb"], token_endpoint_auth_method: "client_secret_basic" },
+      {
+        redirect_uris: ["https://app.example.com/cb"],
+        token_endpoint_auth_method: "client_secret_basic",
+      },
       deps(),
     );
     expect(res.body.client_secret).toBe("s3cr3t");
@@ -101,7 +107,9 @@ describe("Dynamic Client Registration", () => {
 
   it("lehnt fehlende und ungültige redirect_uris ab", async () => {
     expect((await registerClient({}, deps())).status).toBe(400);
-    expect((await registerClient({ redirect_uris: ["http://evil.com/cb"] }, deps())).status).toBe(400);
+    expect((await registerClient({ redirect_uris: ["http://evil.com/cb"] }, deps())).status).toBe(
+      400,
+    );
   });
 });
 

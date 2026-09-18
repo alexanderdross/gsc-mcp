@@ -55,7 +55,10 @@ export class Router {
     // 3. Property-Voraussetzung und Mandantentrennung — zentral, nicht im Handler.
     if (tool.requires.needsProperty) {
       if (session.propertyId === undefined) {
-        return { kind: "denied", message: "Bitte zuerst eine Property auswählen (select_property)." };
+        return {
+          kind: "denied",
+          message: "Bitte zuerst eine Property auswählen (select_property).",
+        };
       }
       const owns = await this.#ownershipCheck(session.userId, session.propertyId);
       if (!owns) {

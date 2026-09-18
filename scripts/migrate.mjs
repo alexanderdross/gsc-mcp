@@ -4,20 +4,20 @@
 //
 // Aufruf:  DATABASE_URL=postgres://… node scripts/migrate.mjs
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync } from "node:child_process";
 
-const url = process.env.DATABASE_URL
+const url = process.env.DATABASE_URL;
 if (!url) {
-  console.error('DATABASE_URL fehlt.')
-  process.exit(1)
+  console.error("DATABASE_URL fehlt.");
+  process.exit(1);
 }
 
-const MIGRATION = 'packages/db/migrations/0001_init.sql'
+const MIGRATION = "packages/db/migrations/0001_init.sql";
 
 try {
-  execFileSync('psql', [url, '-v', 'ON_ERROR_STOP=1', '-f', MIGRATION], { stdio: 'inherit' })
-  console.log(`\n✓ Migration ${MIGRATION} angewendet.`)
+  execFileSync("psql", [url, "-v", "ON_ERROR_STOP=1", "-f", MIGRATION], { stdio: "inherit" });
+  console.log(`\n✓ Migration ${MIGRATION} angewendet.`);
 } catch (e) {
-  console.error(`\n✗ Migration fehlgeschlagen: ${e.message}`)
-  process.exit(1)
+  console.error(`\n✗ Migration fehlgeschlagen: ${e.message}`);
+  process.exit(1);
 }

@@ -19,7 +19,11 @@ interface Sums {
 
 /** API-Position ist einsbasiert → positionSum = position × impressions. */
 function toSums(row: SearchAnalyticsRow): Sums {
-  return { clicks: row.clicks, impressions: row.impressions, positionSum: row.position * row.impressions };
+  return {
+    clicks: row.clicks,
+    impressions: row.impressions,
+    positionSum: row.position * row.impressions,
+  };
 }
 
 function addSums(a: Sums, b: Sums): Sums {
@@ -58,7 +62,9 @@ export function buildDayFacts(
     searchType,
     ...toSums(r),
   }));
-  const namedSum = named.map((q) => ({ clicks: q.clicks, impressions: q.impressions, positionSum: q.positionSum })).reduce(addSums, ZERO);
+  const namedSum = named
+    .map((q) => ({ clicks: q.clicks, impressions: q.impressions, positionSum: q.positionSum }))
+    .reduce(addSums, ZERO);
 
   // Sammelposten = Gesamt − benannt, nie negativ (Rundung).
   const collector: QueryFactInput = {
@@ -89,7 +95,10 @@ export interface GscDaySource {
 }
 
 /** Was `syncDay` zum Schreiben braucht (eine Teilmenge des WarehouseWriter). */
-export type FactWriter = Pick<WarehouseWriter, "writeTotals" | "writeQueryFacts" | "writePageFacts">;
+export type FactWriter = Pick<
+  WarehouseWriter,
+  "writeTotals" | "writeQueryFacts" | "writePageFacts"
+>;
 
 /** Holt einen Tag über die Quelle und schreibt ihn abstimmbar ins Warehouse. */
 export async function syncDay(

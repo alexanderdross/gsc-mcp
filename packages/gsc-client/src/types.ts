@@ -3,15 +3,10 @@
  * Bewusst schmal gehalten — nur die Felder, die die Pipeline verarbeitet.
  */
 
-export type SearchType =
-  | "web"
-  | "image"
-  | "video"
-  | "news"
-  | "discover"
-  | "googleNews";
+export type SearchType = "web" | "image" | "video" | "news" | "discover" | "googleNews";
 
-export type Dimension = "query" | "page" | "country" | "device" | "date" | "hour" | "searchAppearance";
+export type Dimension =
+  "query" | "page" | "country" | "device" | "date" | "hour" | "searchAppearance";
 
 export type DataState = "final" | "all" | "hourly_all";
 

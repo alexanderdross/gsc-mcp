@@ -99,10 +99,12 @@ describe("Router", () => {
     const asFree = await router.run({ plan: "free", userId: 1 }, "get_capabilities", {});
     const asPro = await router.run({ plan: "pro", userId: 1 }, "get_capabilities", {});
     if (asFree.kind === "ok" && asPro.kind === "ok") {
-      const freeTool = (asFree.output as { tools: Array<{ name: string; available: boolean }> }).tools
-        .find((t) => t.name === "detect_anomalies");
-      const proTool = (asPro.output as { tools: Array<{ name: string; available: boolean }> }).tools
-        .find((t) => t.name === "detect_anomalies");
+      const freeTool = (
+        asFree.output as { tools: Array<{ name: string; available: boolean }> }
+      ).tools.find((t) => t.name === "detect_anomalies");
+      const proTool = (
+        asPro.output as { tools: Array<{ name: string; available: boolean }> }
+      ).tools.find((t) => t.name === "detect_anomalies");
       expect(freeTool?.available).toBe(false);
       expect(proTool?.available).toBe(true);
     } else {
@@ -180,11 +182,7 @@ describe("Mandantentrennung über die gesamte Registry", () => {
 
     for (const tool of reg.list()) {
       if (!tool.requires.needsProperty) continue;
-      const res = await router.run(
-        { plan: "pro", userId: 1, propertyId: 999 },
-        tool.name,
-        {},
-      );
+      const res = await router.run({ plan: "pro", userId: 1, propertyId: 999 }, tool.name, {});
       expect(res.kind, `${tool.name} muss fremden Zugriff ablehnen`).toBe("error");
     }
   });

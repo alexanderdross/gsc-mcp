@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import { createDb, type Db } from "@gsc/db";
-import { buildApp, GoogleOAuth, type AppConfig, type HttpRequest, type InspectionQueue } from "../src/index.ts";
+import {
+  buildApp,
+  GoogleOAuth,
+  type AppConfig,
+  type HttpRequest,
+  type InspectionQueue,
+} from "../src/index.ts";
 import type { FetchFn } from "@gsc/gsc-client";
 import type pg from "pg";
 
@@ -31,11 +37,21 @@ function googleAdapter() {
   const fetchFn: FetchFn = async (_url, init) => {
     const body = init.body ?? "";
     const payload = body.includes("authorization_code")
-      ? { access_token: "ya29", refresh_token: "1//r", id_token: jwt({ sub: "sub-9", email: "a@b.de" }), scope: "openid email" }
+      ? {
+          access_token: "ya29",
+          refresh_token: "1//r",
+          id_token: jwt({ sub: "sub-9", email: "a@b.de" }),
+          scope: "openid email",
+        }
       : { access_token: "ya29.refreshed", expires_in: 3600 };
     return { ok: true, status: 200, json: async () => payload, text: async () => "" };
   };
-  return new GoogleOAuth({ clientId: "cid", clientSecret: "sec", redirectUri: `${ISSUER}/oauth/google/callback`, fetchFn });
+  return new GoogleOAuth({
+    clientId: "cid",
+    clientSecret: "sec",
+    redirectUri: `${ISSUER}/oauth/google/callback`,
+    fetchFn,
+  });
 }
 
 function req(over: Partial<HttpRequest>): HttpRequest {
@@ -58,11 +74,21 @@ describe.skipIf(!PGURL)("buildApp (PostgreSQL, voller HTTP-Fluss)", () => {
       resource: `${ISSUER}/mcp`,
       databaseUrl: PGURL!,
       encryptionKey: randomBytes(32),
-      google: { clientId: "cid", clientSecret: "sec", redirectUri: `${ISSUER}/oauth/google/callback` },
+      google: {
+        clientId: "cid",
+        clientSecret: "sec",
+        redirectUri: `${ISSUER}/oauth/google/callback`,
+      },
       googleScopes: ["openid", "email", "webmasters.readonly"],
     };
     const queue: InspectionQueue = { async enqueue() {} };
-    ({ router } = buildApp({ db, google: googleAdapter(), config, queue, newSessionId: () => "sess-1" }));
+    ({ router } = buildApp({
+      db,
+      google: googleAdapter(),
+      config,
+      queue,
+      newSessionId: () => "sess-1",
+    }));
   });
 
   afterAll(async () => {
@@ -76,7 +102,11 @@ describe.skipIf(!PGURL)("buildApp (PostgreSQL, voller HTTP-Fluss)", () => {
 
     // DCR
     const reg = await router.handle(
-      req({ method: "POST", path: "/register", body: JSON.stringify({ redirect_uris: [REDIRECT] }) }),
+      req({
+        method: "POST",
+        path: "/register",
+        body: JSON.stringify({ redirect_uris: [REDIRECT] }),
+      }),
     );
     expect(reg.status).toBe(201);
     const clientId = JSON.parse(reg.body).client_id as string;
@@ -104,7 +134,9 @@ describe.skipIf(!PGURL)("buildApp (PostgreSQL, voller HTTP-Fluss)", () => {
     const googleState = new URL(auth.headers.location!).searchParams.get("state")!;
 
     // callback → 302 zum Client mit code (User wird angelegt, Refresh-Token verschlüsselt)
-    const cb = await router.handle(req({ path: "/oauth/google/callback", query: { state: googleState, code: "gc" } }));
+    const cb = await router.handle(
+      req({ path: "/oauth/google/callback", query: { state: googleState, code: "gc" } }),
+    );
     expect(cb.status).toBe(302);
     const code = new URL(cb.headers.location!).searchParams.get("code")!;
 

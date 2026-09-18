@@ -84,7 +84,11 @@ export function makeIndexCoverageOverview(repo: IndexingRepo) {
     requires: { needsProperty: true },
     async handler(ctx, input) {
       const records = await repo.inspectionRecords(ctx.propertyId!);
-      return { inspected: records.length, groupBy: input.group_by, buckets: summarizeCoverage(records, input.group_by) };
+      return {
+        inspected: records.length,
+        groupBy: input.group_by,
+        buckets: summarizeCoverage(records, input.group_by),
+      };
     },
   });
 }
@@ -106,9 +110,7 @@ export function makeSubmitSitemap(repo: IndexingRepo) {
     name: "submit_sitemap",
     // Das einzige schreibende Tool. Einreichen ist additiv, nicht destruktiv.
     annotations: { title: "Sitemap einreichen", readOnlyHint: false, destructiveHint: false },
-    input: z
-      .object({ sitemap_url: z.string().url(), confirm: z.literal(true) })
-      .strict(),
+    input: z.object({ sitemap_url: z.string().url(), confirm: z.literal(true) }).strict(),
     requires: { needsProperty: true },
     async handler(ctx, input) {
       await repo.submitSitemap(ctx.propertyId!, input.sitemap_url);

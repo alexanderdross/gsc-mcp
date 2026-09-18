@@ -97,7 +97,9 @@ export class GoogleOAuth implements GoogleAuth {
   }
 
   /** Tauscht einen Refresh-Token gegen einen frischen Access-Token (grant_type=refresh_token). */
-  async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresInSec: number }> {
+  async refreshAccessToken(
+    refreshToken: string,
+  ): Promise<{ accessToken: string; expiresInSec: number }> {
     const body = new URLSearchParams({
       refresh_token: refreshToken,
       client_id: this.#clientId,
@@ -134,7 +136,10 @@ export interface GoogleTokenRefresher {
 export function decodeIdToken(idToken: string): { sub?: string; email?: string } {
   const parts = idToken.split(".");
   if (parts.length !== 3) throw new Error("id_token ist kein JWT.");
-  const payload = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as Record<string, unknown>;
+  const payload = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as Record<
+    string,
+    unknown
+  >;
   return {
     ...(typeof payload.sub === "string" ? { sub: payload.sub } : {}),
     ...(typeof payload.email === "string" ? { email: payload.email } : {}),

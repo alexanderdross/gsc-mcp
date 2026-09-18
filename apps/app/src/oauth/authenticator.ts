@@ -36,7 +36,11 @@ export function makeBearerAuthenticator(cfg: BearerAuthConfig): Authenticator {
     const grant = await cfg.tokenStore.getAccess(token);
     if (!grant) return null;
     if (grant.expiresAt <= now()) return null;
-    if (cfg.audience !== undefined && grant.audience !== undefined && grant.audience !== cfg.audience) {
+    if (
+      cfg.audience !== undefined &&
+      grant.audience !== undefined &&
+      grant.audience !== cfg.audience
+    ) {
       return null;
     }
 

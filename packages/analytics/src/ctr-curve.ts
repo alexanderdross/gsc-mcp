@@ -52,9 +52,7 @@ export function fitCtrCurve(observations: readonly CtrObservation[]): CtrCurve {
     buckets.set(bucket, b);
   }
 
-  let blocks: Block[] = [...buckets.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([, b]) => b);
+  let blocks: Block[] = [...buckets.entries()].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
 
   // 2. Dünne Buckets in den vorherigen Nachbarn ziehen (der erste in den nächsten).
   blocks = mergeThin(blocks);
@@ -83,11 +81,16 @@ function mergeThin(blocks: readonly Block[]): Block[] {
   // Ist der allererste Block noch zu dünn (kein Vorgänger vorhanden), in den nächsten ziehen.
   while (out.length >= 2 && out[0]!.weight < MIN_BUCKET_IMPRESSIONS) {
     const [first, second, ...rest] = out;
-    out.splice(0, 2, {
-      weight: first!.weight + second!.weight,
-      weightedCtr: first!.weightedCtr + second!.weightedCtr,
-      position: first!.position + second!.position,
-    }, ...rest);
+    out.splice(
+      0,
+      2,
+      {
+        weight: first!.weight + second!.weight,
+        weightedCtr: first!.weightedCtr + second!.weightedCtr,
+        position: first!.position + second!.position,
+      },
+      ...rest,
+    );
   }
   return out;
 }

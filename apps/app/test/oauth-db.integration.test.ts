@@ -53,7 +53,12 @@ function gens(): OAuthGenerators {
 
 const google: GoogleAuth = {
   authorizeUrl: (state) => `https://accounts.google.com/o/oauth2/v2/auth?state=${state}`,
-  exchange: async () => ({ googleSub: "sub-9", email: "seo@aip.aero", refreshToken: "1//g-refresh", scopes: ["webmasters.readonly"] }),
+  exchange: async () => ({
+    googleSub: "sub-9",
+    email: "seo@aip.aero",
+    refreshToken: "1//g-refresh",
+    scopes: ["webmasters.readonly"],
+  }),
 };
 
 describe.skipIf(!PGURL)("OAuth-Persistenz (PostgreSQL)", () => {
@@ -143,7 +148,11 @@ describe.skipIf(!PGURL)("OAuth-Persistenz (PostgreSQL)", () => {
   });
 
   it("DbUserDirectory legt Nutzer an und speichert den Refresh-Token verschlüsselt", async () => {
-    const [user] = await db.select().from(schema.users).where(eq(schema.users.googleSub, "sub-9")).limit(1);
+    const [user] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.googleSub, "sub-9"))
+      .limit(1);
     expect(user?.email).toBe("seo@aip.aero");
 
     const [cred] = await db
@@ -160,22 +169,54 @@ describe.skipIf(!PGURL)("OAuth-Persistenz (PostgreSQL)", () => {
 
   it("Authorization-Code ist einmalig einlösbar (DELETE … RETURNING)", async () => {
     const p = newProvider();
-    await p.authorize({ response_type: "code", client_id: "client-1", redirect_uri: REDIRECT, code_challenge: CHALLENGE });
+    await p.authorize({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: REDIRECT,
+      code_challenge: CHALLENGE,
+    });
     await p.googleCallback({ state: "state-1", code: "g" });
-    const first = await p.token({ grant_type: "authorization_code", code: "code-1", redirect_uri: REDIRECT, client_id: "client-1", code_verifier: VERIFIER });
+    const first = await p.token({
+      grant_type: "authorization_code",
+      code: "code-1",
+      redirect_uri: REDIRECT,
+      client_id: "client-1",
+      code_verifier: VERIFIER,
+    });
     expect(first.status).toBe(200);
-    const second = await p.token({ grant_type: "authorization_code", code: "code-1", redirect_uri: REDIRECT, client_id: "client-1", code_verifier: VERIFIER });
+    const second = await p.token({
+      grant_type: "authorization_code",
+      code: "code-1",
+      redirect_uri: REDIRECT,
+      client_id: "client-1",
+      code_verifier: VERIFIER,
+    });
     expect(second.status).toBe(400);
   });
 
   it("Refresh-Rotation: alter Refresh-Token verschwindet aus der DB", async () => {
     const p = newProvider();
-    await p.authorize({ response_type: "code", client_id: "client-1", redirect_uri: REDIRECT, code_challenge: CHALLENGE });
+    await p.authorize({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: REDIRECT,
+      code_challenge: CHALLENGE,
+    });
     await p.googleCallback({ state: "state-1", code: "g" });
-    const first = await p.token({ grant_type: "authorization_code", code: "code-1", redirect_uri: REDIRECT, client_id: "client-1", code_verifier: VERIFIER });
+    const first = await p.token({
+      grant_type: "authorization_code",
+      code: "code-1",
+      redirect_uri: REDIRECT,
+      client_id: "client-1",
+      code_verifier: VERIFIER,
+    });
     const oldRefresh = first.body.refresh_token as string;
 
-    const refreshed = await p.token({ grant_type: "refresh_token", refresh_token: oldRefresh, client_id: "client-1" });
+    const refreshed = await p.token({
+      grant_type: "refresh_token",
+      refresh_token: oldRefresh,
+      client_id: "client-1",
+    });
     expect(refreshed.status).toBe(200);
     expect(await tokens.getRefresh(oldRefresh)).toBeUndefined();
     expect(await tokens.getRefresh(refreshed.body.refresh_token as string)).toBeDefined();

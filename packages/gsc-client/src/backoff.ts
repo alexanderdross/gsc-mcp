@@ -40,17 +40,13 @@ export interface RetryOptions extends BackoffOptions {
   readonly rng?: () => number;
 }
 
-const realSleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+const realSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Führt `fn` aus und wiederholt, solange der geworfene Fehler `retryable` meldet
  * und Versuche übrig sind. Nicht wiederholbare Fehler werden sofort weitergereicht.
  */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  opts: RetryOptions = {},
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}): Promise<T> {
   const maxAttempts = opts.maxAttempts ?? 5;
   const sleep = opts.sleep ?? realSleep;
   const rng = opts.rng ?? (() => 0.5);

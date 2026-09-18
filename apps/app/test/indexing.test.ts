@@ -86,7 +86,11 @@ const pro = { plan: "pro", userId: 1, propertyId: 7, detail: "standard" } as con
 const owns = async () => true;
 
 function run(repo: IndexingRepo, tool: string, input: unknown) {
-  return new Router(buildRegistry({ indexing: repo }), { ownershipCheck: owns }).run(pro, tool, input);
+  return new Router(buildRegistry({ indexing: repo }), { ownershipCheck: owns }).run(
+    pro,
+    tool,
+    input,
+  );
 }
 
 describe("Indexierungs-Tools", () => {

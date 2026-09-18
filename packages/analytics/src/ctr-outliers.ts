@@ -26,10 +26,7 @@ export interface CtrOutlier {
   readonly residual: number;
 }
 
-export function ctrOutliers(
-  rows: readonly CtrInput[],
-  opts: CtrOutlierOptions = {},
-): CtrOutlier[] {
+export function ctrOutliers(rows: readonly CtrInput[], opts: CtrOutlierOptions = {}): CtrOutlier[] {
   const minImpressions = opts.minImpressions ?? 500;
   const factor = opts.factor ?? 0.5;
 

@@ -115,8 +115,10 @@ export class OAuthProvider {
       kind: "error_redirect",
       location: withParams(redirectUri, { error, error_description: desc, state: params.state }),
     });
-    if (params.response_type !== "code") return back("unsupported_response_type", "Nur response_type=code.");
-    if (!params.code_challenge) return back("invalid_request", "code_challenge fehlt (PKCE Pflicht).");
+    if (params.response_type !== "code")
+      return back("unsupported_response_type", "Nur response_type=code.");
+    if (!params.code_challenge)
+      return back("invalid_request", "code_challenge fehlt (PKCE Pflicht).");
     if ((params.code_challenge_method ?? "S256") !== "S256") {
       return back("invalid_request", "Nur code_challenge_method=S256.");
     }
@@ -137,7 +139,11 @@ export class OAuthProvider {
   }
 
   /** Rückkanal der Google-Zustimmung — mündet in unseren Authorization-Code. */
-  async googleCallback(params: { code?: string; state?: string; error?: string }): Promise<CallbackResult> {
+  async googleCallback(params: {
+    code?: string;
+    state?: string;
+    error?: string;
+  }): Promise<CallbackResult> {
     if (!params.state) return badRequest("invalid_request", "state fehlt.");
     const pending = await this.#d.pending.take(params.state);
     if (!pending) return badRequest("invalid_request", "Unbekannter oder abgelaufener state.");
@@ -205,11 +211,13 @@ export class OAuthProvider {
     const ac = await this.#d.codes.take(params.code); // Einmalgebrauch
     if (!ac) return tokenError(400, "invalid_grant", "Unbekannter oder bereits eingelöster code.");
     if (ac.expiresAt <= this.#now()) return tokenError(400, "invalid_grant", "code abgelaufen.");
-    if (params.client_id !== ac.clientId) return tokenError(400, "invalid_grant", "client_id passt nicht zum code.");
+    if (params.client_id !== ac.clientId)
+      return tokenError(400, "invalid_grant", "client_id passt nicht zum code.");
     if (params.redirect_uri !== ac.redirectUri) {
       return tokenError(400, "invalid_grant", "redirect_uri passt nicht zum code.");
     }
-    if (!params.code_verifier) return tokenError(400, "invalid_request", "code_verifier fehlt (PKCE).");
+    if (!params.code_verifier)
+      return tokenError(400, "invalid_request", "code_verifier fehlt (PKCE).");
     if (!verifyPkce(params.code_verifier, ac.codeChallenge, ac.codeChallengeMethod)) {
       return tokenError(400, "invalid_grant", "PKCE-Prüfung fehlgeschlagen.");
     }
@@ -231,7 +239,10 @@ export class OAuthProvider {
   }
 
   /** Gibt bei vertraulichen Clients einen Fehler zurück, sonst `undefined`. */
-  async #authenticateClient(clientId: string, params: TokenParams): Promise<TokenResult | undefined> {
+  async #authenticateClient(
+    clientId: string,
+    params: TokenParams,
+  ): Promise<TokenResult | undefined> {
     const client = await this.#d.clients.get(clientId);
     if (!client) return tokenError(401, "invalid_client", "Unbekannter Client.");
     if (client.tokenEndpointAuthMethod !== "none") {
@@ -242,12 +253,29 @@ export class OAuthProvider {
     return undefined;
   }
 
-  async #issue(userId: number, clientId: string, scope: string, audience: string | undefined): Promise<TokenResult> {
+  async #issue(
+    userId: number,
+    clientId: string,
+    scope: string,
+    audience: string | undefined,
+  ): Promise<TokenResult> {
     const access = this.#d.gen.accessToken();
     const refresh = this.#d.gen.refreshToken();
     const expiresAt = this.#now() + this.#accessTtl;
-    await this.#d.tokens.saveAccess({ token: access, userId, scope, ...(audience === undefined ? {} : { audience }), expiresAt });
-    await this.#d.tokens.saveRefresh({ token: refresh, userId, clientId, scope, ...(audience === undefined ? {} : { audience }) });
+    await this.#d.tokens.saveAccess({
+      token: access,
+      userId,
+      scope,
+      ...(audience === undefined ? {} : { audience }),
+      expiresAt,
+    });
+    await this.#d.tokens.saveRefresh({
+      token: refresh,
+      userId,
+      clientId,
+      scope,
+      ...(audience === undefined ? {} : { audience }),
+    });
     return {
       status: 200,
       body: {
@@ -263,7 +291,10 @@ export class OAuthProvider {
 
 /* ── Helfer ────────────────────────────────────────────────────────────────── */
 
-function badRequest(error: string, description: string): { kind: "error"; status: number; body: Record<string, unknown> } {
+function badRequest(
+  error: string,
+  description: string,
+): { kind: "error"; status: number; body: Record<string, unknown> } {
   return { kind: "error", status: 400, body: { error, error_description: description } };
 }
 

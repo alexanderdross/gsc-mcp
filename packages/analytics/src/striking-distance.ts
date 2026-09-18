@@ -45,7 +45,13 @@ export function strikingDistance(
     const current = ctr(row);
     const potentialClicks = row.impressions * Math.max(0, targetCtr - current);
     if (potentialClicks <= 0) continue;
-    out.push({ key: row.key, position, impressions: row.impressions, ctr: current, potentialClicks });
+    out.push({
+      key: row.key,
+      position,
+      impressions: row.impressions,
+      ctr: current,
+      potentialClicks,
+    });
   }
   // Nach absolutem Klickpotenzial, nicht nach Position.
   return out.sort((a, b) => b.potentialClicks - a.potentialClicks);

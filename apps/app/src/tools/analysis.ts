@@ -24,7 +24,9 @@ import type { WarehouseRepo, Dimension } from "../repo.ts";
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum als YYYY-MM-DD");
 
 /** Fittet die site-eigene CTR-Kurve aus Faktenzeilen mit Position. */
-function curveFrom(rows: readonly (CtrObservation | { clicks: number; impressions: number; positionSum: number })[]) {
+function curveFrom(
+  rows: readonly (CtrObservation | { clicks: number; impressions: number; positionSum: number })[],
+) {
   const observations: CtrObservation[] = [];
   for (const r of rows) {
     const position = avgPosition(r);
@@ -127,7 +129,11 @@ export function makeBrandVsNonbrand(repo: WarehouseRepo) {
         sortBy: "clicks",
         limit: 25_000,
       });
-      const anonymized = perf.anonymized ?? { clicks: 0, impressions: perf.anonymizedImpressions, positionSum: 0 };
+      const anonymized = perf.anonymized ?? {
+        clicks: 0,
+        impressions: perf.anonymizedImpressions,
+        positionSum: 0,
+      };
       const split = brandSplit(perf.rows, pattern, anonymized);
       return { source: perf.source, covered: perf.covered, ...split };
     },

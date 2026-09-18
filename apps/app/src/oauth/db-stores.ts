@@ -11,7 +11,8 @@ import type { PkceMethod } from "./pkce.ts";
 import type { ClientStore, OAuthClient, TokenStore, AccessGrant, RefreshGrant } from "./store.ts";
 import type { AuthCodeStore, AuthCode, PendingStore, PendingAuthorization } from "./codes.ts";
 
-const { oauthClients, oauthPending, oauthAuthCodes, oauthAccessTokens, oauthRefreshTokens } = schema;
+const { oauthClients, oauthPending, oauthAuthCodes, oauthAccessTokens, oauthRefreshTokens } =
+  schema;
 
 export class DbClientStore implements ClientStore {
   readonly #db: Db;
@@ -37,7 +38,11 @@ export class DbClientStore implements ClientStore {
   }
 
   async get(clientId: string): Promise<OAuthClient | undefined> {
-    const [r] = await this.#db.select().from(oauthClients).where(eq(oauthClients.clientId, clientId)).limit(1);
+    const [r] = await this.#db
+      .select()
+      .from(oauthClients)
+      .where(eq(oauthClients.clientId, clientId))
+      .limit(1);
     if (!r) return undefined;
     return {
       clientId: r.clientId,
@@ -73,7 +78,11 @@ export class DbTokenStore implements TokenStore {
   }
 
   async getAccess(token: string): Promise<AccessGrant | undefined> {
-    const [r] = await this.#db.select().from(oauthAccessTokens).where(eq(oauthAccessTokens.token, token)).limit(1);
+    const [r] = await this.#db
+      .select()
+      .from(oauthAccessTokens)
+      .where(eq(oauthAccessTokens.token, token))
+      .limit(1);
     if (!r) return undefined;
     return {
       token: r.token,
@@ -102,7 +111,11 @@ export class DbTokenStore implements TokenStore {
   }
 
   async getRefresh(token: string): Promise<RefreshGrant | undefined> {
-    const [r] = await this.#db.select().from(oauthRefreshTokens).where(eq(oauthRefreshTokens.token, token)).limit(1);
+    const [r] = await this.#db
+      .select()
+      .from(oauthRefreshTokens)
+      .where(eq(oauthRefreshTokens.token, token))
+      .limit(1);
     if (!r) return undefined;
     return {
       token: r.token,
@@ -143,7 +156,10 @@ export class DbAuthCodeStore implements AuthCodeStore {
 
   async take(code: string): Promise<AuthCode | undefined> {
     // Atomarer Einmalgebrauch: lesen und löschen in einer Anweisung.
-    const [r] = await this.#db.delete(oauthAuthCodes).where(eq(oauthAuthCodes.code, code)).returning();
+    const [r] = await this.#db
+      .delete(oauthAuthCodes)
+      .where(eq(oauthAuthCodes.code, code))
+      .returning();
     if (!r) return undefined;
     return {
       code: r.code,
@@ -182,7 +198,10 @@ export class DbPendingStore implements PendingStore {
   }
 
   async take(state: string): Promise<PendingAuthorization | undefined> {
-    const [r] = await this.#db.delete(oauthPending).where(eq(oauthPending.state, state)).returning();
+    const [r] = await this.#db
+      .delete(oauthPending)
+      .where(eq(oauthPending.state, state))
+      .returning();
     if (!r) return undefined;
     return {
       state: r.state,
