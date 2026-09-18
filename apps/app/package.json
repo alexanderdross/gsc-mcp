@@ -12,7 +12,7 @@
     "@gsc/db": "*",
     "@gsc/gsc-client": "*",
     "zod": "^3.23.8",
-    "pg-boss": "^10.1.5"
+    "pg-boss": "^12.30.0"
   },
   "scripts": {
     "typecheck": "tsc --build"
