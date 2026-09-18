@@ -1,0 +1,11 @@
+# Generierte oder fremde Artefakte nicht formatieren.
+node_modules/
+dist/
+.render/
+*.tsbuildinfo
+package-lock.json
+docs/uebersicht.html
+
+# Markdown-Doku hat einen eigenen Validator (scripts/check-docs.mjs) und wird
+# als kanonische Prosa gepflegt — nicht von Prettier umbrechen lassen.
+*.md

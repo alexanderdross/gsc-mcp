@@ -1,0 +1,30 @@
+# Dependabot: hält Dependencies aktuell, aber ruhig.
+# Monatlicher Rhythmus, dazu 14 Tage Cooldown — frisch veröffentlichte
+# Versionen werden erst nach zwei Wochen vorgeschlagen (fängt zurückgezogene
+# oder kompromittierte Releases ab). Non-Major-Updates werden gebündelt,
+# damit pro Monat wenige, überschaubare PRs entstehen.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    groups:
+      github-actions:
+        patterns:
+          - "*"

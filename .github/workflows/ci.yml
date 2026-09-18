@@ -19,6 +19,37 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  lint:
+    name: Lint und Formatierung
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier
+        run: npm run format:check
+
+  audit:
+    name: Dependency-Audit
+    runs-on: ubuntu-latest
+    # Informativ: meldet bekannte Schwachstellen, blockiert die CI aber nicht.
+    # Die eigentliche Behebung fährt Dependabot (siehe .github/dependabot.yml).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: npm audit
+        run: npm audit --audit-level=high
+
   ddl:
     name: DDL gegen PostgreSQL
     runs-on: ubuntu-latest

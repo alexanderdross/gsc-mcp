@@ -30,6 +30,8 @@ scripts/             validate-ddl.mjs, check-docs.mjs, render-check.mjs
 ```bash
 npm run typecheck   # tsc --build (Projektreferenzen)
 npm test            # Vitest, packages/*/test + apps/*/test
+npm run lint        # ESLint (typescript-eslint) über den Code
+npm run format      # Prettier schreibt, format:check prüft nur
 node scripts/check-docs.mjs           # Doku-Links, Konsistenz, Artefakt-Struktur
 PGURL=… node scripts/validate-ddl.mjs # Migration gegen echtes PostgreSQL
 ```

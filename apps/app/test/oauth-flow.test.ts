@@ -47,21 +47,24 @@ function gens(): OAuthGenerators {
 const google: GoogleAuth = {
   authorizeUrl: (state, scopes) =>
     `https://accounts.google.com/o/oauth2/v2/auth?state=${state}&scope=${encodeURIComponent(scopes.join(" "))}`,
-  exchange: async () => ({ googleSub: "sub-9", email: "a@b.de", refreshToken: "g-refresh", scopes: ["webmasters.readonly"] }),
+  exchange: async () => ({
+    googleSub: "sub-9",
+    email: "a@b.de",
+    refreshToken: "g-refresh",
+    scopes: ["webmasters.readonly"],
+  }),
 };
 
 const users: UserDirectory = { linkGoogle: async () => ({ userId: 42 }) };
 
-function provider(over: Partial<Parameters<typeof makeProvider>[0]> = {}) {
-  return makeProvider(over);
-}
-
-function makeProvider(over: {
-  clients?: InMemoryClientStore;
-  tokens?: InMemoryTokenStore;
-  now?: () => number;
-  googleAuth?: GoogleAuth;
-} = {}) {
+function makeProvider(
+  over: {
+    clients?: InMemoryClientStore;
+    tokens?: InMemoryTokenStore;
+    now?: () => number;
+    googleAuth?: GoogleAuth;
+  } = {},
+) {
   const clients = over.clients ?? new InMemoryClientStore();
   const tokens = over.tokens ?? new InMemoryTokenStore();
   const codes = new InMemoryAuthCodeStore();
@@ -175,13 +178,21 @@ describe("OAuthProvider — voller Fluss authorize → callback → token", () =
       audience: RESOURCE,
       now: () => 1_700_000_000_000,
     });
-    expect(await authenticator({ authorization: "Bearer access-1" })).toEqual({ plan: "pro", userId: 42 });
+    expect(await authenticator({ authorization: "Bearer access-1" })).toEqual({
+      plan: "pro",
+      userId: 42,
+    });
   });
 
   it("verweigert den Code bei falschem PKCE-Verifier", async () => {
     const { p, clients } = makeProvider();
     await seedClient(clients);
-    await p.authorize({ response_type: "code", client_id: "client-1", redirect_uri: REDIRECT, code_challenge: CHALLENGE });
+    await p.authorize({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: REDIRECT,
+      code_challenge: CHALLENGE,
+    });
     await p.googleCallback({ state: "state-1", code: "google-code" });
     const tok = await p.token({
       grant_type: "authorization_code",
@@ -197,11 +208,28 @@ describe("OAuthProvider — voller Fluss authorize → callback → token", () =
   it("Code ist einmalig einlösbar", async () => {
     const { p, clients } = makeProvider();
     await seedClient(clients);
-    await p.authorize({ response_type: "code", client_id: "client-1", redirect_uri: REDIRECT, code_challenge: CHALLENGE });
+    await p.authorize({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: REDIRECT,
+      code_challenge: CHALLENGE,
+    });
     await p.googleCallback({ state: "state-1", code: "google-code" });
-    const first = await p.token({ grant_type: "authorization_code", code: "code-1", redirect_uri: REDIRECT, client_id: "client-1", code_verifier: VERIFIER });
+    const first = await p.token({
+      grant_type: "authorization_code",
+      code: "code-1",
+      redirect_uri: REDIRECT,
+      client_id: "client-1",
+      code_verifier: VERIFIER,
+    });
     expect(first.status).toBe(200);
-    const second = await p.token({ grant_type: "authorization_code", code: "code-1", redirect_uri: REDIRECT, client_id: "client-1", code_verifier: VERIFIER });
+    const second = await p.token({
+      grant_type: "authorization_code",
+      code: "code-1",
+      redirect_uri: REDIRECT,
+      client_id: "client-1",
+      code_verifier: VERIFIER,
+    });
     expect(second.status).toBe(400);
     expect(second.body.error).toBe("invalid_grant");
   });
@@ -209,11 +237,26 @@ describe("OAuthProvider — voller Fluss authorize → callback → token", () =
   it("refresh_token rotiert: alter Refresh wird ungültig, neuer gilt", async () => {
     const { p, clients, tokens } = makeProvider();
     await seedClient(clients);
-    await p.authorize({ response_type: "code", client_id: "client-1", redirect_uri: REDIRECT, code_challenge: CHALLENGE });
+    await p.authorize({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: REDIRECT,
+      code_challenge: CHALLENGE,
+    });
     await p.googleCallback({ state: "state-1", code: "google-code" });
-    await p.token({ grant_type: "authorization_code", code: "code-1", redirect_uri: REDIRECT, client_id: "client-1", code_verifier: VERIFIER });
+    await p.token({
+      grant_type: "authorization_code",
+      code: "code-1",
+      redirect_uri: REDIRECT,
+      client_id: "client-1",
+      code_verifier: VERIFIER,
+    });
 
-    const refreshed = await p.token({ grant_type: "refresh_token", refresh_token: "refresh-1", client_id: "client-1" });
+    const refreshed = await p.token({
+      grant_type: "refresh_token",
+      refresh_token: "refresh-1",
+      client_id: "client-1",
+    });
     expect(refreshed.status).toBe(200);
     expect(refreshed.body.access_token).toBe("access-2");
     expect(refreshed.body.refresh_token).toBe("refresh-2");
@@ -225,12 +268,26 @@ describe("OAuthProvider — voller Fluss authorize → callback → token", () =
 
   it("vertraulicher Client braucht am /token sein Secret", async () => {
     const { p, clients } = makeProvider();
-    await seedClient(clients, { tokenEndpointAuthMethod: "client_secret_basic", clientSecret: "s3cr3t" });
-    await p.authorize({ response_type: "code", client_id: "client-1", redirect_uri: REDIRECT, code_challenge: CHALLENGE });
+    await seedClient(clients, {
+      tokenEndpointAuthMethod: "client_secret_basic",
+      clientSecret: "s3cr3t",
+    });
+    await p.authorize({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: REDIRECT,
+      code_challenge: CHALLENGE,
+    });
     await p.googleCallback({ state: "state-1", code: "google-code" });
 
     // Ohne Secret → 401, ohne den Code zu verbrauchen (Client-Auth läuft zuerst).
-    const noSecret = await p.token({ grant_type: "authorization_code", code: "code-1", redirect_uri: REDIRECT, client_id: "client-1", code_verifier: VERIFIER });
+    const noSecret = await p.token({
+      grant_type: "authorization_code",
+      code: "code-1",
+      redirect_uri: REDIRECT,
+      client_id: "client-1",
+      code_verifier: VERIFIER,
+    });
     expect(noSecret.status).toBe(401);
     expect(noSecret.body.error).toBe("invalid_client");
 
@@ -249,7 +306,13 @@ describe("OAuthProvider — voller Fluss authorize → callback → token", () =
   it("callback mit Google-Fehler leitet den Fehler an den Client zurück", async () => {
     const { p, clients } = makeProvider();
     await seedClient(clients);
-    await p.authorize({ response_type: "code", client_id: "client-1", redirect_uri: REDIRECT, code_challenge: CHALLENGE, state: "client-xyz" });
+    await p.authorize({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: REDIRECT,
+      code_challenge: CHALLENGE,
+      state: "client-xyz",
+    });
     const cb = await p.googleCallback({ state: "state-1", error: "access_denied" });
     expect(cb.kind).toBe("redirect");
     if (cb.kind !== "redirect") return;

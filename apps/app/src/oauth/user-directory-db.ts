@@ -6,7 +6,6 @@
  * es `packages/db` und die Krypto-Utility (`crypto.ts`) verbindet.
  */
 
-import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { schema, type Db } from "@gsc/db";
 import type { UserDirectory, GoogleIdentity } from "./google.ts";
@@ -37,7 +36,11 @@ export class DbUserDirectory implements UserDirectory {
     // Nutzer per google_sub anlegen oder finden; E-Mail aktualisieren.
     const [u] = await this.#db
       .insert(users)
-      .values({ publicId: this.#newPublicId(), googleSub: identity.googleSub, email: identity.email })
+      .values({
+        publicId: this.#newPublicId(),
+        googleSub: identity.googleSub,
+        email: identity.email,
+      })
       .onConflictDoUpdate({ target: users.googleSub, set: { email: identity.email } })
       .returning({ id: users.id });
     const userId = u!.id;
