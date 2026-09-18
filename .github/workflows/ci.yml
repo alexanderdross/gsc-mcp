@@ -19,8 +19,8 @@ jobs:
     name: Typecheck und Tests
     runs-on: [self-hosted, linux]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -32,8 +32,8 @@ jobs:
     name: Lint und Formatierung
     runs-on: [self-hosted, linux]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -47,8 +47,8 @@ jobs:
     name: Dependency-Audit
     runs-on: [self-hosted, linux]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -66,8 +66,8 @@ jobs:
     env:
       PGURL: postgres://postgres:postgres@localhost:5432/citest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -97,8 +97,8 @@ jobs:
     name: Dokumente und Artefakt-Seite
     runs-on: [self-hosted, linux]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - run: node scripts/check-docs.mjs
@@ -107,8 +107,8 @@ jobs:
     name: Artefakt-Seite rendern
     runs-on: [self-hosted, linux]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - run: npm install --no-save playwright-core
@@ -116,7 +116,7 @@ jobs:
         run: npx playwright-core install chromium --with-deps || npx playwright install chromium --with-deps
       - name: In beiden Themes rendern und auf Überlauf prüfen
         run: node scripts/render-check.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: uebersicht-screenshots
