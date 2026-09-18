@@ -10,7 +10,7 @@
     "@gsc/db": "*",
     "@gsc/app": "*",
     "@gsc/gsc-client": "*",
-    "pg-boss": "^10.1.5"
+    "pg-boss": "^12.30.0"
   },
   "scripts": {
     "typecheck": "tsc --build"
