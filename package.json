@@ -21,7 +21,7 @@
     "start:worker": "tsx apps/worker/src/main.ts"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^9.1.2",
     "globals": "^15.15.0",
