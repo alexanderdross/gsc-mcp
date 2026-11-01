@@ -9,8 +9,8 @@
   "dependencies": {
     "@gsc/core": "*",
     "@gsc/analytics": "*",
-    "drizzle-orm": "^0.36.4",
-    "pg": "^8.13.1"
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10"
