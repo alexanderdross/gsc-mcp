@@ -4,7 +4,7 @@
 
 Erhoben im August 2026 über Websuche, GitHub, Anbieterdokumentation und eine Live-Abfrage der Tool-Registry von Advanced GSC über dessen eigenen `get_capabilities`-Endpunkt.
 
-**Eine Einschränkung ist zu nennen:** `advancedgsc.com` ist aus der Arbeitsumgebung heraus durch die Netzwerkrichtlinie gesperrt; die Marketingseiten konnten nicht direkt gelesen werden. Die Angaben zu diesem Anbieter stammen aus der Live-Registry (belastbarer als jede Marketingseite), aus Suchergebnissen und aus Screenshots. Preise und Kontingente sind vor einer Preisentscheidung gegenzuprüfen.
+**Nachgetragen am 03.11.2026:** Die damalige Einschränkung ist aufgehoben. `advancedgsc.com` war aus der Arbeitsumgebung heraus gesperrt, weshalb die Angaben zu diesem Anbieter zunächst nur aus der Live-Registry, aus Suchergebnissen und aus Screenshots stammten. Inzwischen liegt eine Vollerhebung aller 45 Seiten vor, samt Preisliste und Kontingenten: [14-wettbewerber-advancedgsc.md](14-wettbewerber-advancedgsc.md). Die Live-Registry bleibt für den Funktionsumfang die belastbarere Quelle; beide Quellen widersprechen sich nicht.
 
 ## Das Feld in drei Ringen
 
@@ -14,7 +14,7 @@ Die Kategorie ist 2026 von rund sechs auf über zwanzig aktive Projekte gewachse
 
 | Anbieter | Art | Datenquelle | Preis |
 |---|---|---|---|
-| `AminForou/mcp-gsc` | Open Source, >500 Sterne | GSC API, live | kostenlos |
+| `AminForou/mcp-gsc` | Open Source, 600–800 Sterne; Vorlauf des gehosteten Produkts | GSC API, live | kostenlos |
 | `ahonn/mcp-server-gsc` | Open Source | GSC API, live | kostenlos |
 | `seotesting-com/gsc-mcp-server` | Open Source, Anbieter-gestützt | GSC API | kostenlos |
 | `better-search-console` | Open Source | **API → lokale SQLite**, SQL als Tools | kostenlos |
@@ -33,7 +33,7 @@ Anbieter, die Daten dauerhaft speichern *und* einen MCP-Zugang haben:
 | **SEOTesting** | ja | **ja**, eigener GSC-MCP-Server | Zeitraumvergleich, CTR, Reports | UK |
 | **GSC Wizard** | kontinuierlich gespeichert | teilweise | Reports | US |
 | **SEO Stack** | ja | unklar | Reports | US |
-| **Advanced GSC** | nein (Passthrough) | ja, 45 Tools, GSC + GA4 | Kannibalisierung, Vergleich | US |
+| **Advanced GSC** | nein (Passthrough) | ja, 45 Tools, GSC + GA4 | Kannibalisierung, Vergleich | US, 15/40/105 $ |
 
 **Das ist der unbequeme Teil:** Die im ersten Entwurf geplante Positionierung — „Historie über 16 Monate plus Agentenzugang" — ist von SEO Gets bereits besetzt und von SEOTesting weitgehend abgedeckt.
 
@@ -173,8 +173,8 @@ Bricht der Export ab — Abrechnung abgelaufen, Rechte entzogen, Dataset gelösc
 | Frage | Warum sie zählt |
 |---|---|
 | Hat SEO Gets Alerts? | Falls ja, schrumpft Aussage 3 des USP |
-| Nutzt jemand bereits den Bulk Export als MCP-Quelle? | Falls ja, fällt Aussage 1 |
-| Preise und Kontingente von SEO Gets und SEOTesting | Grundlage der Preisentscheidung in [07-billing.md](07-billing.md) |
+| Nutzt jemand bereits den Bulk Export als MCP-Quelle? | Falls ja, fällt Aussage 1. **Für Advanced GSC am 03.11.2026 beantwortet: nein** — der Anbieter kennt den Weg, empfiehlt ihn in seinem eigenen Methodenvergleich ausdrücklich ab und hängt dauerhaft an der API ([14](14-wettbewerber-advancedgsc.md)). Für SEO Gets und SEOTesting offen |
+| Preise und Kontingente von SEO Gets und SEOTesting | Grundlage der Preisentscheidung in [07-billing.md](07-billing.md). **Advanced GSC ist erhoben:** 15/40/105 $ je Monat, gestaffelt über Properties, Datenquellen und Verbrauchskontingente ([14](14-wettbewerber-advancedgsc.md)) |
 | BigQuery-Kosten je Property und Monat bei Variante B | entscheidet über die Machbarkeit von B |
 | Bulk Export bei Domain- vs. URL-Präfix-Properties | Einrichtungspfad kann sich unterscheiden |
 
