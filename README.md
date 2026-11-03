@@ -34,6 +34,7 @@ Wie groß der Unterschied ist, ist gemessen: Bei `sc-domain:aip.aero` entfallen 
 | [11 — Go-to-Market](docs/11-go-to-market.md) | Connector Directory, Kanäle, Launch |
 | [**12 — Wettbewerb & USP**](docs/12-wettbewerb-usp.md) | Marktscan, ehrliche Prüfung der Differenzierer, Positionierung |
 | [13 — Umsetzungsstand](docs/13-status.md) | PR-übergreifender Ist-Zustand des Codes, Testtiefe, offene Betreiber-Schritte |
+| [14 — Wettbewerberdossier: Advanced GSC](docs/14-wettbewerber-advancedgsc.md) | Vollerhebung des direktesten Wettbewerbers: Preise, Verpackung, Content, Formeln |
 
 ## Architektur in Kürze
 
